@@ -10,17 +10,9 @@ st.set_page_config(page_title="GROPAK ERP", layout="wide")
 
 st.markdown("""
     <style>
-    /* Ogólne style przycisków */
-    .stButton>button { 
-        width: 100%; 
-        border-radius: 4px; 
-        height: 2.1em; 
-        font-size: 12px; 
-        font-weight: 500;
-        padding: 0px;
-    }
+    .stButton>button { width: 100%; border-radius: 4px; height: 2.1em; font-size: 12px; font-weight: 500; padding: 0px; }
     
-    /* Styl dla przycisków akcji (ZAMKNIJ/ODEBRANO) */
+    /* Zielone przyciski akcji */
     div[data-testid="column"]:nth-of-type(5) button {
         border: 1px solid #c3e6cb !important;
         color: #1e7e34 !important;
@@ -31,7 +23,7 @@ st.markdown("""
         color: white !important;
     }
     
-    /* Styl dla przycisków usuwania (X) */
+    /* Czerwone przyciski usuwania */
     div[data-testid="column"]:nth-of-type(6) button {
         border: 1px solid #f5c6cb !important;
         color: #bd2130 !important;
@@ -43,7 +35,6 @@ st.markdown("""
     }
 
     .main .block-container { padding-top: 2rem; }
-    
     .section-header {
         background-color: #f1f3f5;
         padding: 12px 15px;
@@ -55,27 +46,10 @@ st.markdown("""
         letter-spacing: 0.5px;
         border-left: 4px solid #495057;
     }
-    
     .cal-day { font-weight: 600; color: #495057; margin-bottom: 8px; font-size: 14px; border-bottom: 1px solid #f1f3f5; }
-    .cal-entry-out { 
-        font-size: 10px; background: #e9ecef; color: #0056b3; 
-        border-left: 3px solid #0056b3; padding: 2px 5px; 
-        margin-bottom: 2px; border-radius: 2px; font-weight: 500;
-    }
-    .cal-entry-in { 
-        font-size: 10px; background: #f8f9fa; color: #28a745; 
-        border-left: 3px solid #28a745; padding: 2px 5px; 
-        margin-bottom: 2px; border-radius: 2px; font-weight: 500;
-    }
-    
-    div[data-testid="stPopover"] > button { 
-        border: 1px solid #dee2e6 !important; 
-        background: white !important; 
-        text-align: left !important; 
-        color: #495057 !important;
-        font-size: 13px !important;
-        height: 2.1em !important;
-    }
+    .cal-entry-out { font-size: 10px; background: #e9ecef; color: #0056b3; border-left: 3px solid #0056b3; padding: 2px 5px; margin-bottom: 2px; border-radius: 2px; font-weight: 500; }
+    .cal-entry-in { font-size: 10px; background: #f8f9fa; color: #28a745; border-left: 3px solid #28a745; padding: 2px 5px; margin-bottom: 2px; border-radius: 2px; font-weight: 500; }
+    div[data-testid="stPopover"] > button { border: 1px solid #dee2e6 !important; background: white !important; text-align: left !important; color: #495057 !important; font-size: 13px !important; height: 2.1em !important; }
     .label-text { font-size: 12px; color: #6c757d; font-weight: 600; margin-bottom: 2px; }
     </style>
     """, unsafe_allow_html=True)
@@ -104,8 +78,7 @@ def wczytaj_dane():
         try:
             with open(PLIK_DANYCH, "r", encoding="utf-8") as f:
                 d = json.load(f)
-                keys = ["w_realizacji", "zrealizowane", "przyjecia", "przyjecia_historia"]
-                for k in keys:
+                for k in ["w_realizacji", "zrealizowane", "przyjecia", "przyjecia_historia"]:
                     if k not in d: d[k] = []
                 return d
         except: pass
@@ -118,10 +91,8 @@ def zapisz_dane(dane):
 dane = wczytaj_dane()
 
 # --- 4. NAWIGACJA I DATY ---
-if "cal_month" not in st.session_state:
-    st.session_state.cal_month = datetime.now().month
-if "cal_year" not in st.session_state:
-    st.session_state.cal_year = datetime.now().year
+if "cal_month" not in st.session_state: st.session_state.cal_month = datetime.now().month
+if "cal_year" not in st.session_state: st.session_state.cal_year = datetime.now().year
 
 def zmien_miesiac(delta):
     new_month = st.session_state.cal_month + delta
@@ -147,11 +118,10 @@ with st.sidebar:
     st.title("OPERACJE")
     opcja = st.selectbox("Typ dokumentu", ["Zlecenie Produkcji", "Przyjęcie Towaru (PZ)"])
     st.divider()
-    
     if opcja == "Zlecenie Produkcji":
         k_klient = st.text_input("Klient")
-        k_termin = st.text_input("Termin realizacji (np. 27.03)")
-        k_produkty = st.text_area("Specyfikacja produktów")
+        k_termin = st.text_input("Termin (np. 27.03)")
+        k_produkty = st.text_area("Specyfikacja")
         if st.button("Zapisz Zlecenie"):
             if k_klient:
                 dane["w_realizacji"].append({"klient": k_klient, "termin": k_termin, "opis": k_produkty, "data_p": datetime.now().strftime("%d.%m %H:%M"), "data_k": "-"})
@@ -159,7 +129,7 @@ with st.sidebar:
     else:
         p_dostawca = st.text_input("Dostawca")
         p_termin = st.text_input("Data dostawy (np. 28.03)")
-        p_towar = st.text_area("Szczegóły towaru")
+        p_towar = st.text_area("Szczegóły")
         if st.button("Zapisz Przyjęcie"):
             if p_dostawca and p_towar:
                 dane["przyjecia"].append({"dostawca": p_dostawca, "termin": p_termin, "towar": p_towar, "data_p": datetime.now().strftime("%d.%m %H:%M"), "data_k": "-"})
@@ -169,9 +139,8 @@ with st.sidebar:
 st.subheader("Panel Zarządzania GROPAK ERP")
 st.write("---")
 
-# --- SEKCJA KALENDARZA ---
+# --- KALENDARZ ---
 st.markdown('<div class="section-header">Harmonogram Realizacji</div>', unsafe_allow_html=True)
-
 c_prev, c_title, c_next = st.columns([1, 4, 1])
 with c_prev:
     if st.button("Poprzedni", key="p_btn"): zmien_miesiac(-1); st.rerun()
@@ -186,16 +155,15 @@ for z in dane["w_realizacji"]:
     d, m, y = parse_date(z.get('termin', ''))
     if d and m == st.session_state.cal_month and y == st.session_state.cal_year:
         if d not in events_map: events_map[d] = []
-        events_map[d].append(f'<div class="cal-entry-out">WYDANIE: {z["klient"]}</div>')
+        events_map[d].append(f'<div class="cal-entry-out">W: {z["klient"]}</div>')
 for p in dane["przyjecia"]:
     d, m, y = parse_date(p.get('termin', ''))
     if d and m == st.session_state.cal_month and y == st.session_state.cal_year:
         if d not in events_map: events_map[d] = []
-        events_map[d].append(f'<div class="cal-entry-in">DOSTAWA: {p["dostawca"]}</div>')
+        events_map[d].append(f'<div class="cal-entry-in">P: {p["dostawca"]}</div>')
 
-dni_tyg = ["Poniedziałek", "Wtorek", "Środa", "Czwartek", "Piątek", "Sobota", "Niedziela"]
 h_cols = st.columns(7)
-for i, d_name in enumerate(dni_tyg): h_cols[i].markdown(f"<p style='text-align:center; font-size: 11px; color: #adb5bd; margin-bottom: 5px;'>{d_name.upper()}</p>", unsafe_allow_html=True)
+for i, d_n in enumerate(["PON", "WT", "ŚR", "CZW", "PT", "SOB", "NDZ"]): h_cols[i].markdown(f"<p style='text-align:center; font-size: 11px; color: #adb5bd; margin-bottom: 5px;'>{d_n}</p>", unsafe_allow_html=True)
 
 month_days = calendar.monthcalendar(st.session_state.cal_year, st.session_state.cal_month)
 for week in month_days:
@@ -208,18 +176,15 @@ for week in month_days:
 
 st.write("---")
 
-# --- SEKCJA PRODUKCJI ---
+# --- PRODUKCJA ---
 st.markdown('<div class="section-header">Zlecenia Produkcyjne</div>', unsafe_allow_html=True)
-st.markdown('<div style="display: flex; margin-bottom: 5px;"><div class="label-text" style="width: 15.5%;">Klient</div><div class="label-text" style="width: 12.5%;">Termin</div><div class="label-text" style="width: 12.5%;">Dodano</div><div class="label-text" style="width: 45%;">Szczegóły Zamówienia</div></div>', unsafe_allow_html=True)
+st.markdown('<div style="display: flex; margin-bottom: 5px;"><div class="label-text" style="width: 15.5%;">Klient</div><div class="label-text" style="width: 12.5%;">Termin</div><div class="label-text" style="width: 12.5%;">Dodano</div><div class="label-text" style="width: 45%;">Specyfikacja</div></div>', unsafe_allow_html=True)
 
-if not dane["w_realizacji"]:
-    st.info("Brak aktywnych zleceń.")
+if not dane["w_realizacji"]: st.info("Brak aktywnych zleceń.")
 else:
     for i, z in enumerate(dane["w_realizacji"]):
         c = st.columns([1.5, 1.2, 1.2, 4.5, 0.8, 0.4])
-        c[0].write(f"**{z['klient']}**")
-        c[1].write(z.get('termin', '-'))
-        c[2].write(z.get('data_p', '-'))
+        c[0].write(f"**{z['klient']}**"); c[1].write(z.get('termin', '-')); c[2].write(z.get('data_p', '-'))
         with c[3].popover(f"{z['opis'][:50]}..."):
             n_p = st.text_area("Specyfikacja", value=z['opis'], key=f"pe_{i}")
             n_t = st.text_input("Termin", value=z.get('termin', '-'), key=f"te_{i}")
@@ -235,20 +200,17 @@ else:
 
 st.write("")
 
-# --- SEKCJA LOGISTYKI ---
+# --- LOGISTYKA ---
 st.markdown('<div class="section-header">Przyjęcia Towaru</div>', unsafe_allow_html=True)
 st.markdown('<div style="display: flex; margin-bottom: 5px;"><div class="label-text" style="width: 15.5%;">Dostawca</div><div class="label-text" style="width: 12.5%;">Termin</div><div class="label-text" style="width: 12.5%;">Dodano</div><div class="label-text" style="width: 45%;">Opis Dostawy</div></div>', unsafe_allow_html=True)
 
-if not dane["przyjecia"]:
-    st.info("Brak zaplanowanych przyjęć.")
+if not dane["przyjecia"]: st.info("Brak zaplanowanych przyjęć.")
 else:
     for i, p in enumerate(dane["przyjecia"]):
         c = st.columns([1.5, 1.2, 1.2, 4.5, 0.8, 0.4])
-        c[0].write(f"**{p['dostawca']}**")
-        c[1].write(p.get('termin', '-'))
-        c[2].write(p.get('data_p', '-'))
+        c[0].write(f"**{p['dostawca']}**"); c[1].write(p.get('termin', '-')); c[2].write(p.get('data_p', '-'))
         with c[3].popover(f"{p['towar'][:50]}..."):
-            n_tw = st.text_area("Szczegóły", value=p['towar'], key=f"pze_{i}")
+            n_tw = st.text_area("Towar", value=p['towar'], key=f"pze_{i}")
             n_pt = st.text_input("Termin", value=p.get('termin', '-'), key=f"pzt_{i}")
             if st.button("Zaktualizuj", key=f"pzs_{i}"):
                 dane["przyjecia"][i]['towar'], dane["przyjecia"][i]['termin'] = n_tw, n_pt
@@ -267,4 +229,4 @@ if st.checkbox("Pokaż historię zakończonych operacji"):
     with t_h1:
         if dane["zrealizowane"]: st.dataframe(pd.DataFrame(dane["zrealizowane"]).iloc[::-1], use_container_width=True)
     with t_h2:
-        if dane["przyjecia_historia"]: st.dataframe(pd.DataFrame(dane["przyjecia_historia"]).iloc[::-1], use_container_width=True)iner_width=True)
+        if dane["przyjecia_historia"]: st.dataframe(pd.DataFrame(dane["przyjecia_historia"]).iloc[::-1], use_container_width=True)
