@@ -10,40 +10,17 @@ st.set_page_config(page_title="GROPAK ERP", layout="wide")
 
 st.markdown("""
     <style>
-    /* Ogólne style przycisków */
+    /* Ogólne style */
     .stButton>button { 
         width: 100%; 
         border-radius: 4px; 
-        height: 2.0em; 
-        font-size: 12px !important; 
-        font-weight: 500;
-        transition: all 0.2s;
+        height: 2.1em; 
+        font-size: 12px !important;
+        padding: 0px;
     }
-    
-    /* Przyciski akcji (Zielone) */
-    div[data-testid="column"]:nth-of-type(5) button {
-        background-color: #f8fff9;
-        border: 1px solid #c3e6cb;
-        color: #1e7e34;
-    }
-    div[data-testid="column"]:nth-of-type(5) button:hover {
-        background-color: #28a745;
-        color: white;
-    }
-    
-    /* Przyciski usuwania (Czerwone) */
-    div[data-testid="column"]:nth-of-type(6) button {
-        background-color: #fff9f9;
-        border: 1px solid #f5c6cb;
-        color: #bd2130;
-    }
-    div[data-testid="column"]:nth-of-type(6) button:hover {
-        background-color: #dc3545;
-        color: white;
-    }
-
     .main .block-container { padding-top: 2rem; }
     
+    /* Nagłówki sekcji */
     .section-header {
         background-color: #f8f9fa;
         padding: 10px 15px;
@@ -52,31 +29,31 @@ st.markdown("""
         font-weight: 600;
         color: #495057;
         text-transform: uppercase;
-        font-size: 14px;
-        border-left: 3px solid #dee2e6;
+        font-size: 13px;
+        border-left: 3px solid #adb5bd;
     }
     
-    .cal-day { font-weight: 600; color: #495057; margin-bottom: 5px; font-size: 13px; }
+    /* Kalendarz */
+    .cal-day { font-weight: 600; color: #495057; margin-bottom: 5px; font-size: 13px; border-bottom: 1px solid #f1f3f5; }
     .cal-entry-out { 
-        font-size: 10px; background: #f1f3f5; color: #0056b3; 
-        border-left: 3px solid #0056b3; padding: 2px 5px; 
+        font-size: 10px; background: #e7f3ff; color: #0056b3; 
+        border-left: 3px solid #0056b3; padding: 2px 4px; 
         margin-bottom: 2px; border-radius: 2px;
     }
     .cal-entry-in { 
-        font-size: 10px; background: #f8f9fa; color: #28a745; 
-        border-left: 3px solid #28a745; padding: 2px 5px; 
+        font-size: 10px; background: #f0fff4; color: #28a745; 
+        border-left: 3px solid #28a745; padding: 2px 4px; 
         margin-bottom: 2px; border-radius: 2px;
     }
     
+    /* Popover i etykiety */
     div[data-testid="stPopover"] > button { 
-        border: 1px solid #e9ecef !important; 
-        background: white !important; 
-        text-align: left !important; 
-        color: #495057 !important;
+        border: 1px solid #dee2e6 !important; 
+        background: white !important;
         font-size: 13px !important;
-        height: 2.0em !important;
+        height: 2.1em !important;
     }
-    .label-text { font-size: 11px; color: #adb5bd; font-weight: 700; text-transform: uppercase; }
+    .label-text { font-size: 11px; color: #adb5bd; font-weight: 700; text-transform: uppercase; margin-bottom: 5px; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -89,7 +66,7 @@ def check_password():
         else:
             st.session_state["password_correct"] = False
     if "password_correct" not in st.session_state:
-        st.text_input("Logowanie", type="password", on_change=password_entered, key="password")
+        st.text_input("Hasło dostępu", type="password", on_change=password_entered, key="password")
         return False
     return st.session_state.get("password_correct", False)
 
@@ -121,10 +98,13 @@ if "cal_month" not in st.session_state: st.session_state.cal_month = datetime.no
 if "cal_year" not in st.session_state: st.session_state.cal_year = datetime.now().year
 
 def zmien_miesiac(delta):
-    new_month = st.session_state.cal_month + delta
-    if new_month > 12: st.session_state.cal_month = 1; st.session_state.cal_year += 1
-    elif new_month < 1: st.session_state.cal_month = 12; st.session_state.cal_year -= 1
-    else: st.session_state.cal_month = new_month
+    st.session_state.cal_month += delta
+    if st.session_state.cal_month > 12:
+        st.session_state.cal_month = 1
+        st.session_state.cal_year += 1
+    elif st.session_state.cal_month < 1:
+        st.session_state.cal_month = 12
+        st.session_state.cal_year -= 1
 
 def parse_date(txt):
     try:
@@ -157,19 +137,20 @@ with st.sidebar:
                 zapisz_dane(dane); st.rerun()
 
 # --- 6. WIDOK GŁÓWNY ---
-st.subheader("Panel Zarządzania GROPAK ERP")
+st.subheader("System Zarządzania GROPAK ERP")
 
 # KALENDARZ
-st.markdown('<div class="section-header">Harmonogram Realizacji</div>', unsafe_allow_html=True)
-c_prev, c_title, c_next = st.columns([1, 4, 1])
-with c_prev: 
-    if st.button("Poprzedni", key="p_btn"): zmien_miesiac(-1); st.rerun()
-with c_title:
+st.markdown('<div class="section-header">Harmonogram Miesięczny</div>', unsafe_allow_html=True)
+c_nav1, c_nav2, c_nav3 = st.columns([1, 4, 1])
+with c_nav1: 
+    if st.button("Poprzedni"): zmien_miesiac(-1); st.rerun()
+with c_nav2:
     m_names = ["Styczeń", "Luty", "Marzec", "Kwiecień", "Maj", "Czerwiec", "Lipiec", "Sierpień", "Wrzesień", "Październik", "Listopad", "Grudzień"]
     st.markdown(f"<h5 style='text-align: center; margin: 0;'>{m_names[st.session_state.cal_month-1]} {st.session_state.cal_year}</h5>", unsafe_allow_html=True)
-with c_next: 
-    if st.button("Następny", key="n_btn"): zmien_miesiac(1); st.rerun()
+with c_nav3: 
+    if st.button("Następny"): zmien_miesiac(1); st.rerun()
 
+# Dane do kalendarza
 events_map = {}
 for z in dane["w_realizacji"]:
     d, m, y = parse_date(z.get('termin', ''))
@@ -182,10 +163,11 @@ for p in dane["przyjecia"]:
         if d not in events_map: events_map[d] = []
         events_map[d].append(f'<div class="cal-entry-in">P: {p["dostawca"]}</div>')
 
+# Siatka kalendarza
 month_days = calendar.monthcalendar(st.session_state.cal_year, st.session_state.cal_month)
 cols_h = st.columns(7)
-for i, d_name in enumerate(["Pon", "Wt", "Śr", "Czw", "Pt", "Sob", "Ndz"]):
-    cols_h[i].markdown(f"<p style='text-align:center; font-size: 10px; color: #ced4da; margin:0;'>{d_name}</p>", unsafe_allow_html=True)
+for i, d_n in enumerate(["Pon", "Wt", "Śr", "Czw", "Pt", "Sob", "Ndz"]):
+    cols_h[i].markdown(f"<p style='text-align:center; font-size: 10px; color: #adb5bd; margin:0;'>{d_n}</p>", unsafe_allow_html=True)
 
 for week in month_days:
     w_cols = st.columns(7)
@@ -195,15 +177,10 @@ for week in month_days:
             if day in events_map: html += "".join(events_map[day])
             w_cols[i].markdown(html, unsafe_allow_html=True)
 
-# ZLECENIA W REALIZACJI
-st.markdown('<div class="section-header">Zlecenia Produkcyjne</div>', unsafe_allow_html=True)
+# LISTA ZLECEŃ
+st.markdown('<div class="section-header">Zlecenia Produkcyjne (Aktywne)</div>', unsafe_allow_html=True)
 if dane["w_realizacji"]:
-    h = st.columns([1.5, 1.2, 1.2, 4.5, 0.8, 0.4])
-    h[0].markdown('<p class="label-text">Klient</p>', unsafe_allow_html=True)
-    h[1].markdown('<p class="label-text">Termin</p>', unsafe_allow_html=True)
-    h[2].markdown('<p class="label-text">Dodano</p>', unsafe_allow_html=True)
-    h[3].markdown('<p class="label-text">Specyfikacja</p>', unsafe_allow_html=True)
-    
+    st.markdown('<div class="label-text" style="display: flex;"><span style="width: 16%;">Klient</span><span style="width: 13%;">Termin</span><span style="width: 13%;">Dodano</span><span>Specyfikacja</span></div>', unsafe_allow_html=True)
     for i, z in enumerate(dane["w_realizacji"]):
         c = st.columns([1.5, 1.2, 1.2, 4.5, 0.8, 0.4])
         c[0].write(f"**{z['klient']}**")
@@ -212,48 +189,43 @@ if dane["w_realizacji"]:
         with c[3].popover(f"{z['opis'][:60]}..."):
             n_p = st.text_area("Specyfikacja", value=z['opis'], key=f"pe_{i}")
             n_t = st.text_input("Termin", value=z.get('termin', '-'), key=f"te_{i}")
-            if st.button("Zapisz", key=f"ps_{i}"):
+            if st.button("Zapisz Zmiany", key=f"ps_{i}"):
                 dane["w_realizacji"][i]['opis'], dane["w_realizacji"][i]['termin'] = n_p, n_t
                 zapisz_dane(dane); st.rerun()
-        if c[4].button("GOTOWE", key=f"pd_{i}"):
+        if c[4].button("GOTOWE", key=f"pd_{i}", help="Zakończ zlecenie"):
             z["data_k"] = datetime.now().strftime("%d.%m %H:%M")
             dane["zrealizowane"].append(dane["w_realizacji"].pop(i))
             zapisz_dane(dane); st.rerun()
-        if c[5].button("X", key=f"px_{i}"):
+        if c[5].button("X", key=f"px_{i}", help="Usuń"):
             dane["w_realizacji"].pop(i); zapisz_dane(dane); st.rerun()
 else: st.info("Brak aktywnych zleceń.")
 
-# PRZYJĘCIA
-st.markdown('<div class="section-header">Przyjęcia Towaru</div>', unsafe_allow_html=True)
+# LISTA PRZYJĘĆ
+st.markdown('<div class="section-header">Przyjęcia Towaru (PZ)</div>', unsafe_allow_html=True)
 if dane["przyjecia"]:
-    h2 = st.columns([1.5, 1.2, 1.2, 4.5, 0.8, 0.4])
-    h2[0].markdown('<p class="label-text">Dostawca</p>', unsafe_allow_html=True)
-    h2[1].markdown('<p class="label-text">Termin</p>', unsafe_allow_html=True)
-    h2[2].markdown('<p class="label-text">Dodano</p>', unsafe_allow_html=True)
-    h2[3].markdown('<p class="label-text">Szczegóły</p>', unsafe_allow_html=True)
-    
+    st.markdown('<div class="label-text" style="display: flex;"><span style="width: 16%;">Dostawca</span><span style="width: 13%;">Termin</span><span style="width: 13%;">Dodano</span><span>Szczegóły</span></div>', unsafe_allow_html=True)
     for i, p in enumerate(dane["przyjecia"]):
         c = st.columns([1.5, 1.2, 1.2, 4.5, 0.8, 0.4])
         c[0].write(f"**{p['dostawca']}**")
         c[1].write(p.get('termin', '-'))
         c[2].write(p.get('data_p', '-'))
         with c[3].popover(f"{p['towar'][:60]}..."):
-            n_tw = st.text_area("Szczegóły", value=p['towar'], key=f"pze_{i}")
+            n_tw = st.text_area("Towar", value=p['towar'], key=f"pze_{i}")
             n_pt = st.text_input("Termin", value=p.get('termin', '-'), key=f"pzt_{i}")
             if st.button("Zapisz", key=f"pzs_{i}"):
                 dane["przyjecia"][i]['towar'], dane["przyjecia"][i]['termin'] = n_tw, n_pt
                 zapisz_dane(dane); st.rerun()
-        if c[4].button("OK", key=f"pzo_{i}"):
+        if c[4].button("OK", key=f"pzo_{i}", help="Potwierdź odbiór"):
             p["data_k"] = datetime.now().strftime("%d.%m %H:%M")
             dane["przyjecia_historia"].append(dane["przyjecia"].pop(i))
             zapisz_dane(dane); st.rerun()
         if c[5].button("X", key=f"pzx_{i}"):
             dane["przyjecia"].pop(i); zapisz_dane(dane); st.rerun()
-else: st.info("Brak zaplanowanych przyjęć.")
+else: st.info("Brak zaplanowanych dostaw.")
 
-# HISTORIA
+# ARCHIWUM
 st.write("---")
-if st.checkbox("Pokaż archiwum"):
-    t_h1, t_h2 = st.tabs(["Wydania", "Przyjęcia"])
+if st.checkbox("Pokaż historię"):
+    t_h1, t_h2 = st.tabs(["Historia Wydań", "Historia Przyjęć"])
     with t_h1: st.dataframe(pd.DataFrame(dane["zrealizowane"]).iloc[::-1] if dane["zrealizowane"] else None, use_container_width=True)
     with t_h2: st.dataframe(pd.DataFrame(dane["przyjecia_historia"]).iloc[::-1] if dane["przyjecia_historia"] else None, use_container_width=True)
