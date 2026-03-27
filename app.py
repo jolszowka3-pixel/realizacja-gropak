@@ -12,7 +12,7 @@ st.markdown("""
     <style>
     .stButton>button { width: 100%; border-radius: 4px; height: 2.1em; font-size: 12px; font-weight: 500; padding: 0px; }
     
-    /* Zielone przyciski akcji (GOTOWE / OK) - Kolumna 5 */
+    /* UNIWERSALNE STYLE DLA PRZYCISKÓW AKCJI (Kolumna 5 i 6 we wszystkich sekcjach) */
     div[data-testid="column"]:nth-of-type(5) button {
         border: 1px solid #c3e6cb !important;
         color: #1e7e34 !important;
@@ -23,7 +23,6 @@ st.markdown("""
         color: white !important;
     }
     
-    /* Czerwone przyciski usuwania (X) - Kolumna 6 */
     div[data-testid="column"]:nth-of-type(6) button {
         border: 1px solid #f5c6cb !important;
         color: #bd2130 !important;
@@ -50,9 +49,10 @@ st.markdown("""
     .cal-day { font-weight: 600; color: #495057; margin-bottom: 8px; font-size: 14px; border-bottom: 1px solid #f1f3f5; }
     .cal-entry-out { font-size: 10px; background: #e9ecef; color: #0056b3; border-left: 3px solid #0056b3; padding: 2px 5px; margin-bottom: 2px; border-radius: 2px; font-weight: 500; }
     .cal-entry-in { font-size: 10px; background: #f8f9fa; color: #28a745; border-left: 3px solid #28a745; padding: 2px 5px; margin-bottom: 2px; border-radius: 2px; font-weight: 500; }
+    .cal-entry-task { font-size: 10px; background: #fff4e6; color: #d9480f; border-left: 3px solid #d9480f; padding: 2px 5px; margin-bottom: 2px; border-radius: 2px; font-weight: 500; }
+    
     div[data-testid="stPopover"] > button { border: 1px solid #dee2e6 !important; background: white !important; text-align: left !important; color: #495057 !important; font-size: 13px !important; height: 2.1em !important; }
     .label-text { font-size: 11px; color: #adb5bd; font-weight: 700; text-transform: uppercase; margin-bottom: 5px; }
-    
     .stTextInput input { height: 2.1em !important; font-size: 12px !important; padding: 0 5px !important; }
     </style>
     """, unsafe_allow_html=True)
@@ -159,9 +159,9 @@ with st.sidebar:
                 dane["przyjecia"].append({"dostawca": p_dostawca, "termin": p_termin, "towar": p_towar, "data_p": datetime.now().strftime("%d.%m %H:%M"), "autor": st.session_state.user})
                 zapisz_dane(dane); st.rerun()
     else:
-        d_tytul = st.text_input("Tytuł dyspozycji / Cel")
+        d_tytul = st.text_input("Tytuł dyspozycji")
         d_termin = st.text_input("Termin (np. 29.03)")
-        d_opis = st.text_area("Opis zadania")
+        d_opis = st.text_area("Opis")
         if st.button("Zapisz Dyspozycję"):
             if d_tytul:
                 dane["dyspozycje"].append({"tytul": d_tytul, "termin": d_termin, "opis": d_opis, "data_p": datetime.now().strftime("%d.%m %H:%M"), "autor": st.session_state.user})
@@ -196,7 +196,7 @@ for ds in dane["dyspozycje"]:
     d, m, y = parse_date(ds.get('termin', ''))
     if d and m == st.session_state.cal_month and y == st.session_state.cal_year:
         if d not in events_map: events_map[d] = []
-        events_map[d].append(f'<div class="cal-entry-out" style="color:#0056b3; border-left-color:#0056b3;">D: {ds["tytul"]}</div>')
+        events_map[d].append(f'<div class="cal-entry-task">D: {ds["tytul"]}</div>')
 
 month_days = calendar.monthcalendar(st.session_state.cal_year, st.session_state.cal_month)
 cols_h = st.columns(7)
@@ -214,7 +214,6 @@ for week in month_days:
 # --- SEKCJA PRODUKCJI ---
 st.markdown('<div class="section-header">Zlecenia Produkcyjne</div>', unsafe_allow_html=True)
 t_prod1, t_prod2 = st.tabs(["W realizacji", "Zrealizowane"])
-
 with t_prod1:
     if not dane["w_realizacji"]: st.info("Brak aktywnych zleceń.")
     else:
@@ -228,23 +227,20 @@ with t_prod1:
             c[2].write(f"{z.get('data_p', '-')} ({z.get('autor', '?')})")
             with c[3].popover(f"{z['opis'][:60]}..."):
                 n_p = st.text_area("Specyfikacja", value=z['opis'], key=f"pe_{i}")
-                if st.button("Zapisz Opis", key=f"ps_{i}"):
+                if st.button("Zapisz", key=f"ps_{i}"):
                     dane["w_realizacji"][i]['opis'] = n_p; zapisz_dane(dane); st.rerun()
             if c[4].button("GOTOWE", key=f"pd_{i}"):
                 z["data_k"] = datetime.now().strftime("%d.%m %H:%M")
                 z["zamknal"] = st.session_state.user
-                dane["zrealizowane"].append(dane["w_realizacji"].pop(i))
-                zapisz_dane(dane); st.rerun()
+                dane["zrealizowane"].append(dane["w_realizacji"].pop(i)); zapisz_dane(dane); st.rerun()
             if c[5].button("X", key=f"px_{i}"):
                 dane["w_realizacji"].pop(i); zapisz_dane(dane); st.rerun()
-
 with t_prod2:
     if dane["zrealizowane"]: st.dataframe(pd.DataFrame(dane["zrealizowane"]).iloc[::-1], use_container_width=True)
 
 # --- SEKCJA LOGISTYKI ---
 st.markdown('<div class="section-header">Przyjęcia Towaru (PZ)</div>', unsafe_allow_html=True)
-t_log1, t_log2 = st.tabs(["Zaplanowane", "Historia przyjęć"])
-
+t_log1, t_log2 = st.tabs(["Zaplanowane", "Historia"])
 with t_log1:
     if not dane["przyjecia"]: st.info("Brak zaplanowanych dostaw.")
     else:
@@ -258,23 +254,20 @@ with t_log1:
             c[2].write(f"{p.get('data_p', '-')} ({p.get('autor', '?')})")
             with c[3].popover(f"{p['towar'][:60]}..."):
                 n_tw = st.text_area("Towar", value=p['towar'], key=f"pze_{i}")
-                if st.button("Zapisz Opis", key=f"pzs_{i}"):
+                if st.button("Zapisz", key=f"pzs_{i}"):
                     dane["przyjecia"][i]['towar'] = n_tw; zapisz_dane(dane); st.rerun()
             if c[4].button("OK", key=f"pzo_{i}"):
                 p["data_k"] = datetime.now().strftime("%d.%m %H:%M")
                 p["odebral"] = st.session_state.user
-                dane["przyjecia_historia"].append(dane["przyjecia"].pop(i))
-                zapisz_dane(dane); st.rerun()
+                dane["przyjecia_historia"].append(dane["przyjecia"].pop(i)); zapisz_dane(dane); st.rerun()
             if c[5].button("X", key=f"pzx_{i}"):
                 dane["przyjecia"].pop(i); zapisz_dane(dane); st.rerun()
-
 with t_log2:
     if dane["przyjecia_historia"]: st.dataframe(pd.DataFrame(dane["przyjecia_historia"]).iloc[::-1], use_container_width=True)
 
-# --- SEKCJA DYSPOZYCJI DODATKOWYCH ---
+# --- SEKCJA DYSPOZYCJI ---
 st.markdown('<div class="section-header">Dyspozycje Dodatkowe</div>', unsafe_allow_html=True)
-t_dys1, t_dys2 = st.tabs(["W toku", "Historia dyspozycji"])
-
+t_dys1, t_dys2 = st.tabs(["W toku", "Historia"])
 with t_dys1:
     if not dane["dyspozycje"]: st.info("Brak aktywnych dyspozycji.")
     else:
@@ -288,15 +281,13 @@ with t_dys1:
             c[2].write(f"{d.get('data_p', '-')} ({d.get('autor', '?')})")
             with c[3].popover(f"{d['opis'][:60]}..."):
                 n_do = st.text_area("Opis", value=d['opis'], key=f"pde_{i}")
-                if st.button("Zapisz Opis", key=f"pds_{i}"):
+                if st.button("Zapisz", key=f"pds_{i}"):
                     dane["dyspozycje"][i]['opis'] = n_do; zapisz_dane(dane); st.rerun()
             if c[4].button("GOTOWE", key=f"pdd_{i}"):
                 d["data_k"] = datetime.now().strftime("%d.%m %H:%M")
                 d["zamknal"] = st.session_state.user
-                dane["dyspozycje_historia"].append(dane["dyspozycje"].pop(i))
-                zapisz_dane(dane); st.rerun()
+                dane["dyspozycje_historia"].append(dane["dyspozycje"].pop(i)); zapisz_dane(dane); st.rerun()
             if c[5].button("X", key=f"pdx_{i}"):
                 dane["dyspozycje"].pop(i); zapisz_dane(dane); st.rerun()
-
 with t_dys2:
     if dane["dyspozycje_historia"]: st.dataframe(pd.DataFrame(dane["dyspozycje_historia"]).iloc[::-1], use_container_width=True)
