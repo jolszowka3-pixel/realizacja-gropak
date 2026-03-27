@@ -12,7 +12,7 @@ st.markdown("""
     <style>
     .stButton>button { width: 100%; border-radius: 4px; height: 2.1em; font-size: 12px; font-weight: 500; padding: 0px; }
     
-    /* Zielone przyciski akcji */
+    /* Zielone przyciski akcji (GOTOWE / OK) */
     div[data-testid="column"]:nth-of-type(5) button {
         border: 1px solid #c3e6cb !important;
         color: #1e7e34 !important;
@@ -23,7 +23,7 @@ st.markdown("""
         color: white !important;
     }
     
-    /* Czerwone przyciski usuwania */
+    /* Czerwone przyciski usuwania (X) */
     div[data-testid="column"]:nth-of-type(6) button {
         border: 1px solid #f5c6cb !important;
         color: #bd2130 !important;
@@ -52,6 +52,9 @@ st.markdown("""
     .cal-entry-in { font-size: 10px; background: #f8f9fa; color: #28a745; border-left: 3px solid #28a745; padding: 2px 5px; margin-bottom: 2px; border-radius: 2px; font-weight: 500; }
     div[data-testid="stPopover"] > button { border: 1px solid #dee2e6 !important; background: white !important; text-align: left !important; color: #495057 !important; font-size: 13px !important; height: 2.1em !important; }
     .label-text { font-size: 11px; color: #adb5bd; font-weight: 700; text-transform: uppercase; margin-bottom: 5px; }
+    
+    /* Styl dla inputa w tabeli, żeby był niski */
+    .stTextInput input { height: 2.1em !important; font-size: 12px !important; padding: 0 5px !important; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -106,7 +109,7 @@ def zmien_miesiac(delta):
 
 def parse_date(txt):
     try:
-        parts = txt.split(".")
+        parts = str(txt).split(".")
         d, m = int(parts[0]), int(parts[1])
         y = int(parts[2]) if len(parts) > 2 else st.session_state.cal_year
         return d, m, y
@@ -180,15 +183,22 @@ t_prod1, t_prod2 = st.tabs(["W realizacji", "Zrealizowane"])
 with t_prod1:
     if not dane["w_realizacji"]: st.info("Brak aktywnych zleceń.")
     else:
-        st.markdown('<div style="display: flex;"><div class="label-text" style="width: 16%;">Klient</div><div class="label-text" style="width: 13%;">Termin</div><div class="label-text" style="width: 13%;">Dodano</div><div class="label-text">Specyfikacja</div></div>', unsafe_allow_html=True)
+        st.markdown('<div style="display: flex;"><div class="label-text" style="width: 16%;">Klient</div><div class="label-text" style="width: 13%;">Termin (edytuj)</div><div class="label-text" style="width: 13%;">Dodano</div><div class="label-text">Specyfikacja</div></div>', unsafe_allow_html=True)
         for i, z in enumerate(dane["w_realizacji"]):
             c = st.columns([1.5, 1.2, 1.2, 4.5, 0.8, 0.4])
-            c[0].write(f"**{z['klient']}**"); c[1].write(z.get('termin', '-')); c[2].write(z.get('data_p', '-'))
+            c[0].write(f"**{z['klient']}**")
+            
+            # EDYCJA TERMINU INLINE
+            new_term = c[1].text_input("T", value=z.get('termin', '-'), key=f"t_z_{i}", label_visibility="collapsed")
+            if new_term != z.get('termin'):
+                dane["w_realizacji"][i]['termin'] = new_term
+                zapisz_dane(dane); st.rerun()
+                
+            c[2].write(z.get('data_p', '-'))
             with c[3].popover(f"{z['opis'][:60]}..."):
                 n_p = st.text_area("Specyfikacja", value=z['opis'], key=f"pe_{i}")
-                n_t = st.text_input("Termin", value=z.get('termin', '-'), key=f"te_{i}")
-                if st.button("Zapisz", key=f"ps_{i}"):
-                    dane["w_realizacji"][i]['opis'], dane["w_realizacji"][i]['termin'] = n_p, n_t
+                if st.button("Zapisz Opis", key=f"ps_{i}"):
+                    dane["w_realizacji"][i]['opis'] = n_p
                     zapisz_dane(dane); st.rerun()
             if c[4].button("GOTOWE", key=f"pd_{i}"):
                 z["data_k"] = datetime.now().strftime("%d.%m %H:%M")
@@ -208,15 +218,22 @@ t_log1, t_log2 = st.tabs(["Zaplanowane", "Historia przyjęć"])
 with t_log1:
     if not dane["przyjecia"]: st.info("Brak zaplanowanych dostaw.")
     else:
-        st.markdown('<div style="display: flex;"><div class="label-text" style="width: 16%;">Dostawca</div><div class="label-text" style="width: 13%;">Termin</div><div class="label-text" style="width: 13%;">Dodano</div><div class="label-text">Szczegóły</div></div>', unsafe_allow_html=True)
+        st.markdown('<div style="display: flex;"><div class="label-text" style="width: 16%;">Dostawca</div><div class="label-text" style="width: 13%;">Termin (edytuj)</div><div class="label-text" style="width: 13%;">Dodano</div><div class="label-text">Szczegóły</div></div>', unsafe_allow_html=True)
         for i, p in enumerate(dane["przyjecia"]):
             c = st.columns([1.5, 1.2, 1.2, 4.5, 0.8, 0.4])
-            c[0].write(f"**{p['dostawca']}**"); c[1].write(p.get('termin', '-')); c[2].write(p.get('data_p', '-'))
+            c[0].write(f"**{p['dostawca']}**")
+            
+            # EDYCJA TERMINU INLINE
+            new_term_p = c[1].text_input("T", value=p.get('termin', '-'), key=f"t_p_{i}", label_visibility="collapsed")
+            if new_term_p != p.get('termin'):
+                dane["przyjecia"][i]['termin'] = new_term_p
+                zapisz_dane(dane); st.rerun()
+
+            c[2].write(p.get('data_p', '-'))
             with c[3].popover(f"{p['towar'][:60]}..."):
                 n_tw = st.text_area("Towar", value=p['towar'], key=f"pze_{i}")
-                n_pt = st.text_input("Termin", value=p.get('termin', '-'), key=f"pzt_{i}")
-                if st.button("Zapisz", key=f"pzs_{i}"):
-                    dane["przyjecia"][i]['towar'], dane["przyjecia"][i]['termin'] = n_tw, n_pt
+                if st.button("Zapisz Opis", key=f"pzs_{i}"):
+                    dane["przyjecia"][i]['towar'] = n_tw
                     zapisz_dane(dane); st.rerun()
             if c[4].button("OK", key=f"pzo_{i}"):
                 p["data_k"] = datetime.now().strftime("%d.%m %H:%M")
