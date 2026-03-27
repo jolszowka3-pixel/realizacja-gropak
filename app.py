@@ -65,8 +65,8 @@ with st.sidebar:
     st.divider()
     
     if opcja == "Zlecenie Produkcji":
-        k_klient = st.text_input("Nazwa Klienta")
-        k_produkty = st.text_area("Produkty (np. folia bąbelkowa B1 120cm/50m)")
+        k_klient = st.text_input("Klient")
+        k_produkty = st.text_area("Produkty")
         if st.button("Zatwierdź Zlecenie"):
             if k_klient:
                 dane["w_realizacji"].append({
@@ -79,7 +79,7 @@ with st.sidebar:
                 st.rerun()
     else:
         p_dostawca = st.text_input("Dostawca")
-        p_towar = st.text_input("Towar / Surowiec")
+        p_towar = st.text_input("Towar")
         p_ilosc = st.text_input("Ilość")
         if st.button("Zatwierdź Przyjęcie"):
             if p_dostawca and p_towar:
@@ -97,12 +97,12 @@ tab1, tab2, tab3 = st.tabs(["🚀 PRODUKCJA", "✅ HISTORIA WYDAŃ", "📥 PRZYJ
 
 with tab1:
     if not dane["w_realizacji"]:
-        st.info("Brak aktywnych zleceń produkcyjnych.")
+        st.info("Brak aktywnych zleceń.")
     else:
         col_h = st.columns([2, 1.5, 5.5, 1, 1])
         col_h[0].write("**Klient**")
         col_h[1].write("**Data**")
-        col_h[2].write("**Produkty (Kliknij, aby edytować)**")
+        col_h[2].write("**Produkty**")
         col_h[3].write("**Status**")
         col_h[4].write("")
         st.divider()
@@ -112,11 +112,10 @@ with tab1:
             c[0].write(z['klient'])
             c[1].write(z['data_p'])
             
-            # Podgląd produktów na przycisku
             prod_preview = (z['opis'][:65] + '...') if len(z['opis']) > 65 else z['opis']
-            with c[2].popover(f"📦 {prod_preview}"):
-                st.write("**Edytuj listę produktów:**")
-                nowe_produkty = st.text_area("Lista towarów", value=z['opis'], key=f"prod_{i}")
+            with c[2].popover(f"📦 {prod_preview if prod_preview else 'Brak opisu'}"):
+                st.write("**Edytuj produkty:**")
+                nowe_produkty = st.text_area("Treść", value=z['opis'], key=f"prod_{i}", label_visibility="collapsed")
                 if st.button("Zapisz", key=f"save_{i}"):
                     dane["w_realizacji"][i]['opis'] = nowe_produkty
                     zapisz_dane(dane)
@@ -136,7 +135,7 @@ with tab1:
 
 with tab2:
     if not dane["zrealizowane"]:
-        st.write("Brak historii wydania.")
+        st.write("Brak historii.")
     else:
         df_z = pd.DataFrame(dane["zrealizowane"])
         istniejace = [col for col in ["klient", "data_p", "data_k", "opis"] if col in df_z.columns]
@@ -146,10 +145,10 @@ with tab2:
 
 with tab3:
     if not dane["przyjecia"]:
-        st.write("Brak zarejestrowanych dostaw (PZ).")
+        st.write("Brak zarejestrowanych dostaw.")
     else:
         df_p = pd.DataFrame(dane["przyjecia"])
-        df_p.columns = ["Dostawca", "Towar / Surowiec", "Ilość", "Data PZ"]
+        df_p.columns = ["Dostawca", "Towar", "Ilość", "Data PZ"]
         st.dataframe(df_p.iloc[::-1], use_container_width=True)
         if st.button("WYCZYŚĆ REJESTR PZ"):
             dane["przyjecia"] = []
