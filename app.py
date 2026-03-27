@@ -24,9 +24,9 @@ st.markdown("""
         padding: 10px; border-radius: 5px; margin-bottom: 10px;
         font-weight: bold; color: #1f77b4;
     }
-    .cal-day { font-weight: bold; color: #555; margin-bottom: 5px; border-bottom: 1px solid #eee; }
-    .cal-entry-out { font-size: 11px; background: #e1f5fe; color: #01579b; border-left: 3px solid #03a9f4; padding: 2px; margin-bottom: 2px; border-radius: 2px; }
-    .cal-entry-in { font-size: 11px; background: #e8f5e9; color: #1b5e20; border-left: 3px solid #4caf50; padding: 2px; margin-bottom: 2px; border-radius: 2px; }
+    .cal-day { font-weight: bold; color: #555; margin-bottom: 5px; border-bottom: 1px solid #eee; min-height: 25px; }
+    .cal-entry-out { font-size: 10px; background: #e1f5fe; color: #01579b; border-left: 3px solid #03a9f4; padding: 2px; margin-bottom: 2px; border-radius: 2px; line-height: 1.1; }
+    .cal-entry-in { font-size: 10px; background: #e8f5e9; color: #1b5e20; border-left: 3px solid #4caf50; padding: 2px; margin-bottom: 2px; border-radius: 2px; line-height: 1.1; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -67,7 +67,27 @@ def zapisz_dane(dane):
 
 dane = wczytaj_dane()
 
-# --- 4. PANEL BOCZNY ---
+# --- 4. ZARZĄDZANIE DATĄ KALENDARZA ---
+if "cal_month" not in st.session_state:
+    st.session_state.cal_month = datetime.now().month
+if "cal_year" not in st.session_state:
+    st.session_state.cal_year = datetime.now().year
+
+def zmien_miesiac(kierunek):
+    if kierunek == "nast":
+        if st.session_state.cal_month == 12:
+            st.session_state.cal_month = 1
+            st.session_state.cal_year += 1
+        else:
+            st.session_state.cal_month += 1
+    else:
+        if st.session_state.cal_month == 1:
+            st.session_state.cal_month = 12
+            st.session_state.cal_year -= 1
+        else:
+            st.session_state.cal_month -= 1
+
+# --- 5. PANEL BOCZNY ---
 with st.sidebar:
     st.title("⚙️ OPERACJE")
     opcja = st.selectbox("Typ dokumentu", ["Zlecenie Produkcji", "Przyjęcie Towaru (PZ)"])
@@ -75,7 +95,7 @@ with st.sidebar:
     
     if opcja == "Zlecenie Produkcji":
         k_klient = st.text_input("Klient")
-        k_termin = st.text_input("Termin (np. 27.03)")
+        k_termin = st.text_input("Termin (np. 27.03 lub 27.03.2026)")
         k_produkty = st.text_area("Produkty")
         if st.button("Zatwierdź Zlecenie"):
             if k_klient:
@@ -90,46 +110,62 @@ with st.sidebar:
                 dane["przyjecia"].append({"dostawca": p_dostawca, "termin": p_termin, "towar": p_towar, "data_p": datetime.now().strftime("%d.%m %H:%M"), "data_k": "-"})
                 zapisz_dane(dane); st.rerun()
 
-# --- 5. WIDOK GŁÓWNY ---
+# --- 6. WIDOK GŁÓWNY ---
 st.header("📊 System GROPAK Online")
 st.write("---")
 
-# --- SEKCJA KALENDARZA ---
+# --- SEKCJA KALENDARZA Z NAWIGACJĄ ---
 st.markdown('<div class="section-header">📅 KALENDARZ PLANOWANYCH OPERACJI</div>', unsafe_allow_html=True)
 
+# Nagłówek kalendarza z przyciskami
+c1, c2, c3 = st.columns([1, 3, 1])
+with c1:
+    if st.button("◀ Poprzedni"): 
+        zmien_miesiac("poprz"); st.rerun()
+with c2:
+    miesiace_pl = ["Styczeń", "Luty", "Marzec", "Kwiecień", "Maj", "Czerwiec", "Lipiec", "Sierpień", "Wrzesień", "Październik", "Listopad", "Grudzień"]
+    st.markdown(f"<h3 style='text-align: center;'>{miesiace_pl[st.session_state.cal_month-1]} {st.session_state.cal_year}</h3>", unsafe_allow_html=True)
+with c3:
+    if st.button("Następny ▶"): 
+        zmien_miesiac("nast"); st.rerun()
+
 # Logika kalendarza
-now = datetime.now()
-rok, miesiac = now.year, now.month
-cal = calendar.monthcalendar(rok, miesiac)
+rok_cal = st.session_state.cal_year
+mies_cal = st.session_state.cal_month
+cal_grid = calendar.monthcalendar(rok_cal, mies_cal)
 dni_tygodnia = ["Pon", "Wt", "Śr", "Czw", "Pt", "Sob", "Ndz"]
 
-# Mapowanie danych do dni (szukamy formatu DD.MM)
+# Mapowanie danych do dni (obsługa terminów DD.MM lub DD.MM.YYYY)
 events_map = {}
+
+def wyciagnij_date(tekst_daty):
+    try:
+        if not tekst_daty or "." not in tekst_daty: return None, None
+        czesci = tekst_daty.split(".")
+        d = int(czesci[0])
+        m = int(czesci[1])
+        y = int(czesci[2]) if len(czesci) > 2 else rok_cal # Jeśli brak roku, przyjmij aktualny rok kalendarza
+        return d, m, y
+    except: return None, None
+
 for z in dane["w_realizacji"]:
-    t = z.get('termin', '')
-    if "." in t:
-        try:
-            dzien = int(t.split(".")[0])
-            if dzien not in events_map: events_map[dzien] = []
-            events_map[dzien].append(f'<div class="cal-entry-out">🚀 {z["klient"]}</div>')
-        except: pass
+    d, m, y = wyciagnij_date(z.get('termin', ''))
+    if d and m == mies_cal and y == rok_cal:
+        if d not in events_map: events_map[d] = []
+        events_map[d].append(f'<div class="cal-entry-out">🚀 {z["klient"]}</div>')
 
 for p in dane["przyjecia"]:
-    t = p.get('termin', '')
-    if "." in t:
-        try:
-            dzien = int(t.split(".")[0])
-            if dzien not in events_map: events_map[dzien] = []
-            events_map[dzien].append(f'<div class="cal-entry-in">📥 {p["dostawca"]}</div>')
-        except: pass
+    d, m, y = wyciagnij_date(p.get('termin', ''))
+    if d and m == mies_cal and y == rok_cal:
+        if d not in events_map: events_map[d] = []
+        events_map[d].append(f'<div class="cal-entry-in">📥 {p["dostawca"]}</div>')
 
-# Budowa siatki kalendarza
-st.markdown(f"### {calendar.month_name[miesiac]} {rok}")
-cols = st.columns(7)
+# Wyświetlanie siatki
+cols_header = st.columns(7)
 for i, dt in enumerate(dni_tygodnia):
-    cols[i].markdown(f"<center><b>{dt}</b></center>", unsafe_allow_html=True)
+    cols_header[i].markdown(f"<center><b>{dt}</b></center>", unsafe_allow_html=True)
 
-for week in cal:
+for week in cal_grid:
     cols = st.columns(7)
     for i, day in enumerate(week):
         if day == 0:
@@ -139,6 +175,7 @@ for week in cal:
             if day in events_map:
                 cell_html += "".join(events_map[day])
             cols[i].markdown(cell_html, unsafe_allow_html=True)
+
 st.write("---")
 
 # --- SEKCJA A: PRODUKCJA I WYDANIA ---
