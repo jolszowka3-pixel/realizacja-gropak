@@ -12,7 +12,6 @@ st.markdown("""
     .stButton>button { width: 100%; border-radius: 2px; height: 1.9em; line-height: 1; padding: 2px; font-size: 14px; }
     .main .block-container { padding-top: 1.5rem; }
     thead tr th { background-color: #f8f9fa !important; color: #333 !important; }
-    /* Ukrywamy obramowanie przycisku popover, żeby wyglądał jak tekst */
     div[data-testid="stPopover"] > button { 
         border: 1px solid #dcdcdc !important; 
         background: white !important; 
@@ -67,13 +66,15 @@ with st.sidebar:
     
     if opcja == "Zlecenie Produkcji":
         k_klient = st.text_input("Nazwa Klienta")
-        k_kontakt = st.text_input("Telefon / Email")
+        # USUNIĘTO KONTAKT
         k_opis = st.text_area("Specyfikacja (np. folia 120cm/50m)")
         if st.button("Zatwierdź Zlecenie"):
             if k_klient:
                 dane["w_realizacji"].append({
-                    "klient": k_klient, "kontakt": k_kontakt, "opis": k_opis,
-                    "data_p": datetime.now().strftime("%d.%m %H:%M"), "data_k": "-"
+                    "klient": k_klient, 
+                    "opis": k_opis,
+                    "data_p": datetime.now().strftime("%d.%m %H:%M"), 
+                    "data_k": "-"
                 })
                 zapisz_dane(dane)
                 st.rerun()
@@ -99,42 +100,37 @@ with tab1:
     if not dane["w_realizacji"]:
         st.info("Brak aktywnych zleceń.")
     else:
-        # Nagłówki tabeli
-        col_h = st.columns([2, 1.5, 4, 1.5, 1, 1])
+        # Przemodelowane proporcje kolumn (więcej miejsca na specyfikację)
+        col_h = st.columns([2, 1.5, 5.5, 1, 1])
         col_h[0].write("**Klient**")
         col_h[1].write("**Data**")
         col_h[2].write("**Specyfikacja (Edycja)**")
-        col_h[3].write("**Kontakt**")
-        col_h[4].write("**Akcja**")
+        col_h[3].write("**Status**")
+        col_h[4].write("")
         st.divider()
 
         for i, z in enumerate(dane["w_realizacji"]):
-            c = st.columns([2, 1.5, 4, 1.5, 1, 1])
+            c = st.columns([2, 1.5, 5.5, 1, 1])
             c[0].write(z['klient'])
             c[1].write(z['data_p'])
             
-            # Skrócony opis do wyświetlenia na przycisku
-            desc_preview = (z['opis'][:40] + '...') if len(z['opis']) > 40 else z['opis']
-            
-            # --- EDYCJA PRZEZ POPOVER ---
+            desc_preview = (z['opis'][:60] + '...') if len(z['opis']) > 60 else z['opis']
             with c[2].popover(f"📝 {desc_preview}"):
                 st.write("**Edytuj szczegóły zamówienia:**")
-                nowa_spec = st.text_area("Treść specyfikacji", value=z['opis'], key=f"txt_{i}")
-                if st.button("Zapisz zmiany", key=f"save_{i}"):
+                nowa_spec = st.text_area("Treść", value=z['opis'], key=f"txt_{i}")
+                if st.button("Zapisz", key=f"save_{i}"):
                     dane["w_realizacji"][i]['opis'] = nowa_spec
                     zapisz_dane(dane)
                     st.rerun()
             
-            c[3].write(z['kontakt'])
-            
-            if c[4].button("GOTOWE", key=f"z_{i}"):
+            if c[3].button("GOTOWE", key=f"z_{i}"):
                 z["data_k"] = datetime.now().strftime("%d.%m %H:%M")
                 item = dane["w_realizacji"].pop(i)
                 dane["zrealizowane"].append(item)
                 zapisz_dane(dane)
                 st.rerun()
             
-            if c[5].button("USUŃ", key=f"u_{i}"):
+            if c[4].button("❌", key=f"u_{i}"):
                 dane["w_realizacji"].pop(i)
                 zapisz_dane(dane)
                 st.rerun()
@@ -144,9 +140,10 @@ with tab2:
         st.write("Historia jest pusta.")
     else:
         df_z = pd.DataFrame(dane["zrealizowane"])
-        # Wybieramy tylko te kolumny, które na pewno istnieją
-        istniejace = [col for col in ["klient", "data_p", "data_k", "opis", "kontakt"] if col in df_z.columns]
+        # Wyświetlamy tylko potrzebne kolumny w historii
+        istniejace = [col for col in ["klient", "data_p", "data_k", "opis"] if col in df_z.columns]
         df_wyswietl = df_z[istniejace].copy()
+        df_wyswietl.columns = ["Klient", "Przyjęto", "Wydano", "Specyfikacja"]
         st.dataframe(df_wyswietl.iloc[::-1], use_container_width=True)
 
 with tab3:
