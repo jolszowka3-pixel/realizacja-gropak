@@ -67,25 +67,22 @@ def zapisz_dane(dane):
 
 dane = wczytaj_dane()
 
-# --- 4. ZARZĄDZANIE DATĄ KALENDARZA ---
+# --- 4. NAWIGACJA KALENDARZA ---
 if "cal_month" not in st.session_state:
     st.session_state.cal_month = datetime.now().month
 if "cal_year" not in st.session_state:
     st.session_state.cal_year = datetime.now().year
 
-def zmien_miesiac(kierunek):
-    if kierunek == "nast":
-        if st.session_state.cal_month == 12:
-            st.session_state.cal_month = 1
-            st.session_state.cal_year += 1
-        else:
-            st.session_state.cal_month += 1
+def zmien_miesiac(delta):
+    new_month = st.session_state.cal_month + delta
+    if new_month > 12:
+        st.session_state.cal_month = 1
+        st.session_state.cal_year += 1
+    elif new_month < 1:
+        st.session_state.cal_month = 12
+        st.session_state.cal_year -= 1
     else:
-        if st.session_state.cal_month == 1:
-            st.session_state.cal_month = 12
-            st.session_state.cal_year -= 1
-        else:
-            st.session_state.cal_month -= 1
+        st.session_state.cal_month = new_month
 
 # --- 5. PANEL BOCZNY ---
 with st.sidebar:
@@ -95,7 +92,7 @@ with st.sidebar:
     
     if opcja == "Zlecenie Produkcji":
         k_klient = st.text_input("Klient")
-        k_termin = st.text_input("Termin (np. 27.03 lub 27.03.2026)")
+        k_termin = st.text_input("Termin (np. 27.03)")
         k_produkty = st.text_area("Produkty")
         if st.button("Zatwierdź Zlecenie"):
             if k_klient:
@@ -103,7 +100,7 @@ with st.sidebar:
                 zapisz_dane(dane); st.rerun()
     else:
         p_dostawca = st.text_input("Dostawca")
-        p_termin = st.text_input("Termin dostawy (np. 28.03)")
+        p_termin = st.text_input("Termin dostawy")
         p_towar = st.text_area("Towar")
         if st.button("Zatwierdź Przyjęcie"):
             if p_dostawca and p_towar:
@@ -114,114 +111,115 @@ with st.sidebar:
 st.header("📊 System GROPAK Online")
 st.write("---")
 
-# --- SEKCJA KALENDARZA Z NAWIGACJĄ ---
+# --- SEKCJA KALENDARZA ---
 st.markdown('<div class="section-header">📅 KALENDARZ PLANOWANYCH OPERACJI</div>', unsafe_allow_html=True)
 
-# Nagłówek kalendarza z przyciskami
-c1, c2, c3 = st.columns([1, 3, 1])
-with c1:
-    if st.button("◀ Poprzedni"): 
-        zmien_miesiac("poprz"); st.rerun()
-with c2:
-    miesiace_pl = ["Styczeń", "Luty", "Marzec", "Kwiecień", "Maj", "Czerwiec", "Lipiec", "Sierpień", "Wrzesień", "Październik", "Listopad", "Grudzień"]
-    st.markdown(f"<h3 style='text-align: center;'>{miesiace_pl[st.session_state.cal_month-1]} {st.session_state.cal_year}</h3>", unsafe_allow_html=True)
-with c3:
-    if st.button("Następny ▶"): 
-        zmien_miesiac("nast"); st.rerun()
+col_prev, col_title, col_next = st.columns([1, 3, 1])
+with col_prev:
+    if st.button("◀ Poprzedni", key="prev_btn"): zmien_miesiac(-1); st.rerun()
+with col_title:
+    m_names = ["Styczeń", "Luty", "Marzec", "Kwiecień", "Maj", "Czerwiec", "Lipiec", "Sierpień", "Wrzesień", "Październik", "Listopad", "Grudzień"]
+    st.markdown(f"<h3 style='text-align: center;'>{m_names[st.session_state.cal_month-1]} {st.session_state.cal_year}</h3>", unsafe_allow_html=True)
+with col_next:
+    if st.button("Następny ▶", key="next_btn"): zmien_miesiac(1); st.rerun()
 
-# Logika kalendarza
-rok_cal = st.session_state.cal_year
-mies_cal = st.session_state.cal_month
-cal_grid = calendar.monthcalendar(rok_cal, mies_cal)
-dni_tygodnia = ["Pon", "Wt", "Śr", "Czw", "Pt", "Sob", "Ndz"]
-
-# Mapowanie danych do dni (obsługa terminów DD.MM lub DD.MM.YYYY)
+# Logika mapowania zdarzeń
 events_map = {}
-
-def wyciagnij_date(tekst_daty):
+def parse_date(txt):
     try:
-        if not tekst_daty or "." not in tekst_daty: return None, None
-        czesci = tekst_daty.split(".")
-        d = int(czesci[0])
-        m = int(czesci[1])
-        y = int(czesci[2]) if len(czesci) > 2 else rok_cal # Jeśli brak roku, przyjmij aktualny rok kalendarza
+        parts = txt.split(".")
+        d = int(parts[0])
+        m = int(parts[1])
+        y = int(parts[2]) if len(parts) > 2 else st.session_state.cal_year
         return d, m, y
-    except: return None, None
+    except: return None, None, None
 
 for z in dane["w_realizacji"]:
-    d, m, y = wyciagnij_date(z.get('termin', ''))
-    if d and m == mies_cal and y == rok_cal:
+    d, m, y = parse_date(z.get('termin', ''))
+    if d and m == st.session_state.cal_month and y == st.session_state.cal_year:
         if d not in events_map: events_map[d] = []
         events_map[d].append(f'<div class="cal-entry-out">🚀 {z["klient"]}</div>')
 
 for p in dane["przyjecia"]:
-    d, m, y = wyciagnij_date(p.get('termin', ''))
-    if d and m == mies_cal and y == rok_cal:
+    d, m, y = parse_date(p.get('termin', ''))
+    if d and m == st.session_state.cal_month and y == st.session_state.cal_year:
         if d not in events_map: events_map[d] = []
         events_map[d].append(f'<div class="cal-entry-in">📥 {p["dostawca"]}</div>')
 
-# Wyświetlanie siatki
-cols_header = st.columns(7)
-for i, dt in enumerate(dni_tygodnia):
-    cols_header[i].markdown(f"<center><b>{dt}</b></center>", unsafe_allow_html=True)
+# Rysowanie siatki
+dni_tyg = ["Pon", "Wt", "Śr", "Czw", "Pt", "Sob", "Ndz"]
+h_cols = st.columns(7)
+for i, d_name in enumerate(dni_tyg): h_cols[i].markdown(f"<center><b>{d_name}</b></center>", unsafe_allow_html=True)
 
-for week in cal_grid:
-    cols = st.columns(7)
+month_days = calendar.monthcalendar(st.session_state.cal_year, st.session_state.cal_month)
+for week in month_days:
+    w_cols = st.columns(7)
     for i, day in enumerate(week):
-        if day == 0:
-            cols[i].write("")
+        if day == 0: w_cols[i].write("")
         else:
-            cell_html = f'<div class="cal-day">{day}</div>'
-            if day in events_map:
-                cell_html += "".join(events_map[day])
-            cols[i].markdown(cell_html, unsafe_allow_html=True)
+            html = f'<div class="cal-day">{day}</div>'
+            if day in events_map: html += "".join(events_map[day])
+            w_cols[i].markdown(html, unsafe_allow_html=True)
 
 st.write("---")
 
-# --- SEKCJA A: PRODUKCJA I WYDANIA ---
+# --- SEKCJA A: PRODUKCJA ---
 st.markdown('<div class="section-header">📦 ZAMÓWIENIA I REALIZACJA PRODUKCJI</div>', unsafe_allow_html=True)
-tab_p, tab_h = st.tabs(["🚀 Bieżąca Produkcja", "✅ Historia"])
-with tab_p:
+t1, t2 = st.tabs(["🚀 Bieżąca Produkcja", "✅ Historia"])
+
+with t1:
     if not dane["w_realizacji"]: st.info("Brak zleceń.")
     else:
+        st.columns([1.5, 1.2, 1.2, 4.5, 0.8, 0.8]) # Nagłówki wizualne
         for i, z in enumerate(dane["w_realizacji"]):
-            c = st.columns([1.5, 1.2, 4.5, 0.8, 0.8])
+            c = st.columns([1.5, 1.2, 1.2, 4.5, 0.8, 0.8])
             c[0].write(z['klient'])
             c[1].write(f"📅 {z.get('termin', '-')}")
-            p_prev = (z['opis'][:60] + '...') if len(z['opis']) > 60 else z['opis']
-            with c[2].popover(f"📋 {p_prev if p_prev else 'Edytuj'}"):
-                nowe_p = st.text_area("Opis", value=z['opis'], key=f"pe_{i}")
-                nowy_t = st.text_input("Termin", value=z.get('termin', '-'), key=f"te_{i}")
+            c[2].write(z['data_p'])
+            with c[3].popover(f"📋 {z['opis'][:50]}..."):
+                n_p = st.text_area("Produkty", value=z['opis'], key=f"pe_{i}")
+                n_t = st.text_input("Termin", value=z.get('termin', '-'), key=f"te_{i}")
                 if st.button("Zapisz", key=f"ps_{i}"):
-                    dane["w_realizacji"][i]['opis'], dane["w_realizacji"][i]['termin'] = nowe_p, nowy_t
+                    dane["w_realizacji"][i]['opis'], dane["w_realizacji"][i]['termin'] = n_p, n_t
                     zapisz_dane(dane); st.rerun()
-            if c[3].button("GOTOWE", key=f"pd_{i}"):
+            if c[4].button("GOTOWE", key=f"pd_{i}"):
                 z["data_k"] = datetime.now().strftime("%d.%m %H:%M")
                 dane["zrealizowane"].append(dane["w_realizacji"].pop(i))
                 zapisz_dane(dane); st.rerun()
-            if c[4].button("❌", key=f"px_{i}"):
+            if c[5].button("❌", key=f"px_{i}"):
                 dane["w_realizacji"].pop(i); zapisz_dane(dane); st.rerun()
 
 # --- SEKCJA B: LOGISTYKA ---
 st.markdown('<div class="section-header">📥 LOGISTYKA I PRZYJĘCIA TOWARU</div>', unsafe_allow_html=True)
-tab_pz, tab_pzh = st.tabs(["🚚 Zaplanowane", "✅ Historia"])
-with tab_pz:
-    if not dane["przyjecia"]: st.info("Brak przyjęć.")
+t3, t4 = st.tabs(["🚚 Zaplanowane", "✅ Historia"])
+
+with t3:
+    if not dane["przyjecia"]: st.info("Brak dostaw.")
     else:
         for i, p in enumerate(dane["przyjecia"]):
-            c = st.columns([1.5, 1.2, 4.5, 0.8, 0.8])
+            c = st.columns([1.5, 1.2, 1.2, 4.5, 0.8, 0.8])
             c[0].write(p['dostawca'])
             c[1].write(f"📅 {p.get('termin', '-')}")
-            t_prev = (p['towar'][:60] + '...') if len(p['towar']) > 60 else p['towar']
-            with c[2].popover(f"🚚 {t_prev if t_prev else 'Edytuj'}"):
-                nowe_tow = st.text_area("Towar", value=p['towar'], key=f"pze_{i}")
-                nowy_pz_t = st.text_input("Termin", value=p.get('termin', '-'), key=f"pzt_{i}")
+            c[2].write(p['data_p'])
+            with c[3].popover(f"🚚 {p['towar'][:50]}..."):
+                n_tw = st.text_area("Towar", value=p['towar'], key=f"pze_{i}")
+                n_pt = st.text_input("Termin", value=p.get('termin', '-'), key=f"pzt_{i}")
                 if st.button("Zapisz", key=f"pzs_{i}"):
-                    dane["przyjecia"][i]['towar'], dane["przyjecia"][i]['termin'] = nowe_tow, nowy_pz_t
+                    dane["przyjecia"][i]['towar'], dane["przyjecia"][i]['termin'] = n_tw, n_pt
                     zapisz_dane(dane); st.rerun()
-            if c[3].button("✅", key=f"pzo_{i}"):
+            if c[4].button("✅", key=f"pzo_{i}"):
                 p["data_k"] = datetime.now().strftime("%d.%m %H:%M")
                 dane["przyjecia_historia"].append(dane["przyjecia"].pop(i))
                 zapisz_dane(dane); st.rerun()
-            if c[4].button("❌", key=f"pzx_{i}"):
+            if c[5].button("❌", key=f"pzx_{i}"):
                 dane["przyjecia"].pop(i); zapisz_dane(dane); st.rerun()
+
+# --- HISTORIE (Uproszczone) ---
+with t2:
+    if dane["zrealizowane"]:
+        df1 = pd.DataFrame([{"Klient": r.get("klient"), "Wydano": r.get("data_k"), "Produkty": r.get("opis")} for r in dane["zrealizowane"]])
+        st.dataframe(df1.iloc[::-1], use_container_width=True)
+with t4:
+    if dane["przyjecia_historia"]:
+        df2 = pd.DataFrame([{"Dostawca": r.get("dostawca"), "Odebrano": r.get("data_k"), "Towar": r.get("towar")} for r in dane["przyjecia_historia"]])
+        st.dataframe(df2.iloc[::-1], use_container_width=True)
