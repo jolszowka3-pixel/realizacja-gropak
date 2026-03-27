@@ -3,6 +3,7 @@ import json
 import os
 import pandas as pd
 from datetime import datetime
+import calendar
 
 # --- 1. KONFIGURACJA ---
 st.set_page_config(page_title="GROPAK ERP", layout="wide")
@@ -20,18 +21,12 @@ st.markdown("""
     }
     .section-header {
         background-color: #f0f2f6;
-        padding: 10px;
-        border-radius: 5px;
-        margin-bottom: 10px;
-        font-weight: bold;
-        color: #1f77b4;
+        padding: 10px; border-radius: 5px; margin-bottom: 10px;
+        font-weight: bold; color: #1f77b4;
     }
-    .status-badge {
-        padding: 2px 5px;
-        border-radius: 3px;
-        font-size: 12px;
-        font-weight: bold;
-    }
+    .cal-day { font-weight: bold; color: #555; margin-bottom: 5px; border-bottom: 1px solid #eee; }
+    .cal-entry-out { font-size: 11px; background: #e1f5fe; color: #01579b; border-left: 3px solid #03a9f4; padding: 2px; margin-bottom: 2px; border-radius: 2px; }
+    .cal-entry-in { font-size: 11px; background: #e8f5e9; color: #1b5e20; border-left: 3px solid #4caf50; padding: 2px; margin-bottom: 2px; border-radius: 2px; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -84,127 +79,112 @@ with st.sidebar:
         k_produkty = st.text_area("Produkty")
         if st.button("Zatwierdź Zlecenie"):
             if k_klient:
-                dane["w_realizacji"].append({
-                    "klient": k_klient, "termin": k_termin, "opis": k_produkty,
-                    "data_p": datetime.now().strftime("%d.%m %H:%M"), "data_k": "-"
-                })
+                dane["w_realizacji"].append({"klient": k_klient, "termin": k_termin, "opis": k_produkty, "data_p": datetime.now().strftime("%d.%m %H:%M"), "data_k": "-"})
                 zapisz_dane(dane); st.rerun()
     else:
         p_dostawca = st.text_input("Dostawca")
-        p_termin = st.text_input("Termin dostawy")
+        p_termin = st.text_input("Termin dostawy (np. 28.03)")
         p_towar = st.text_area("Towar")
         if st.button("Zatwierdź Przyjęcie"):
             if p_dostawca and p_towar:
-                dane["przyjecia"].append({
-                    "dostawca": p_dostawca, "termin": p_termin, "towar": p_towar, 
-                    "data_p": datetime.now().strftime("%d.%m %H:%M"), "data_k": "-"
-                })
+                dane["przyjecia"].append({"dostawca": p_dostawca, "termin": p_termin, "towar": p_towar, "data_p": datetime.now().strftime("%d.%m %H:%M"), "data_k": "-"})
                 zapisz_dane(dane); st.rerun()
 
 # --- 5. WIDOK GŁÓWNY ---
 st.header("📊 System GROPAK Online")
 st.write("---")
 
-# --- SEKCJA C: HARMONOGRAM TERMINÓW ---
-st.markdown('<div class="section-header">📅 TERMINARZ PLANOWANYCH OPERACJI</div>', unsafe_allow_html=True)
+# --- SEKCJA KALENDARZA ---
+st.markdown('<div class="section-header">📅 KALENDARZ PLANOWANYCH OPERACJI</div>', unsafe_allow_html=True)
 
-# Zbieranie wszystkich planowanych rzeczy do jednej listy
-harmonogram = []
+# Logika kalendarza
+now = datetime.now()
+rok, miesiac = now.year, now.month
+cal = calendar.monthcalendar(rok, miesiac)
+dni_tygodnia = ["Pon", "Wt", "Śr", "Czw", "Pt", "Sob", "Ndz"]
+
+# Mapowanie danych do dni (szukamy formatu DD.MM)
+events_map = {}
 for z in dane["w_realizacji"]:
-    if z.get('termin') and z['termin'] != "-":
-        harmonogram.append({
-            "Data": z['termin'],
-            "Typ": "🚀 WYDANIE",
-            "Podmiot": z['klient'],
-            "Szczegóły": z['opis']
-        })
+    t = z.get('termin', '')
+    if "." in t:
+        try:
+            dzien = int(t.split(".")[0])
+            if dzien not in events_map: events_map[dzien] = []
+            events_map[dzien].append(f'<div class="cal-entry-out">🚀 {z["klient"]}</div>')
+        except: pass
+
 for p in dane["przyjecia"]:
-    if p.get('termin') and p['termin'] != "-":
-        harmonogram.append({
-            "Data": p['termin'],
-            "Typ": "📥 PRZYJĘCIE",
-            "Podmiot": p['dostawca'],
-            "Szczegóły": p['towar']
-        })
+    t = p.get('termin', '')
+    if "." in t:
+        try:
+            dzien = int(t.split(".")[0])
+            if dzien not in events_map: events_map[dzien] = []
+            events_map[dzien].append(f'<div class="cal-entry-in">📥 {p["dostawca"]}</div>')
+        except: pass
 
-if not harmonogram:
-    st.info("Brak zaplanowanych operacji z przypisanym terminem.")
-else:
-    df_h = pd.DataFrame(harmonogram)
-    # Sortowanie po dacie (uproszczone tekstowe)
-    df_h = df_h.sort_values(by="Data")
-    st.table(df_h) # Używamy st.table dla lepszej czytelności harmonogramu
+# Budowa siatki kalendarza
+st.markdown(f"### {calendar.month_name[miesiac]} {rok}")
+cols = st.columns(7)
+for i, dt in enumerate(dni_tygodnia):
+    cols[i].markdown(f"<center><b>{dt}</b></center>", unsafe_allow_html=True)
 
-st.write("")
+for week in cal:
+    cols = st.columns(7)
+    for i, day in enumerate(week):
+        if day == 0:
+            cols[i].write("")
+        else:
+            cell_html = f'<div class="cal-day">{day}</div>'
+            if day in events_map:
+                cell_html += "".join(events_map[day])
+            cols[i].markdown(cell_html, unsafe_allow_html=True)
+st.write("---")
 
 # --- SEKCJA A: PRODUKCJA I WYDANIA ---
 st.markdown('<div class="section-header">📦 ZAMÓWIENIA I REALIZACJA PRODUKCJI</div>', unsafe_allow_html=True)
-tab_prod, tab_hist_prod = st.tabs(["🚀 Bieżąca Produkcja", "✅ Historia Wydań"])
-
-with tab_prod:
-    if not dane["w_realizacji"]:
-        st.info("Brak aktywnych zleceń.")
+tab_p, tab_h = st.tabs(["🚀 Bieżąca Produkcja", "✅ Historia"])
+with tab_p:
+    if not dane["w_realizacji"]: st.info("Brak zleceń.")
     else:
-        c_h = st.columns([1.5, 1.2, 1.2, 4.5, 0.8, 0.8])
-        c_h[0].write("**Klient**"); c_h[1].write("**Termin**"); c_h[2].write("**Dodano**"); c_h[3].write("**Produkty**"); c_h[4].write(""); c_h[5].write("")
-        st.divider()
         for i, z in enumerate(dane["w_realizacji"]):
-            c = st.columns([1.5, 1.2, 1.2, 4.5, 0.8, 0.8])
+            c = st.columns([1.5, 1.2, 4.5, 0.8, 0.8])
             c[0].write(z['klient'])
             c[1].write(f"📅 {z.get('termin', '-')}")
-            c[2].write(z['data_p'])
             p_prev = (z['opis'][:60] + '...') if len(z['opis']) > 60 else z['opis']
-            with c[3].popover(f"📋 {p_prev if p_prev else 'Edytuj'}"):
-                nowe_p = st.text_area("Produkty", value=z['opis'], key=f"p_e_{i}")
-                nowy_t = st.text_input("Termin", value=z.get('termin', '-'), key=f"t_e_{i}")
-                if st.button("Zapisz", key=f"p_s_{i}"):
+            with c[2].popover(f"📋 {p_prev if p_prev else 'Edytuj'}"):
+                nowe_p = st.text_area("Opis", value=z['opis'], key=f"pe_{i}")
+                nowy_t = st.text_input("Termin", value=z.get('termin', '-'), key=f"te_{i}")
+                if st.button("Zapisz", key=f"ps_{i}"):
                     dane["w_realizacji"][i]['opis'], dane["w_realizacji"][i]['termin'] = nowe_p, nowy_t
                     zapisz_dane(dane); st.rerun()
-            if c[4].button("GOTOWE", key=f"p_d_{i}"):
+            if c[3].button("GOTOWE", key=f"pd_{i}"):
                 z["data_k"] = datetime.now().strftime("%d.%m %H:%M")
                 dane["zrealizowane"].append(dane["w_realizacji"].pop(i))
                 zapisz_dane(dane); st.rerun()
-            if c[5].button("❌", key=f"p_x_{i}"):
+            if c[4].button("❌", key=f"px_{i}"):
                 dane["w_realizacji"].pop(i); zapisz_dane(dane); st.rerun()
 
-with tab_hist_prod:
-    if dane["zrealizowane"]:
-        df_v = pd.DataFrame([{ "Klient": r.get("klient", "-"), "Termin": r.get("termin", "-"), "Dodano": r.get("data_p", "-"), "Wydano": r.get("data_k", "-"), "Produkty": r.get("opis", "-")} for r in dane["zrealizowane"]])
-        st.dataframe(df_v.iloc[::-1], use_container_width=True)
-
-st.write("")
-
-# --- SEKCJA B: LOGISTYKA I PRZYJĘCIA ---
+# --- SEKCJA B: LOGISTYKA ---
 st.markdown('<div class="section-header">📥 LOGISTYKA I PRZYJĘCIA TOWARU</div>', unsafe_allow_html=True)
-tab_pz_plan, tab_pz_hist = st.tabs(["🚚 Zaplanowane Dostawy", "✅ Historia Przyjęć"])
-
-with tab_pz_plan:
-    if not dane["przyjecia"]:
-        st.info("Brak zaplanowanych przyjęć.")
+tab_pz, tab_pzh = st.tabs(["🚚 Zaplanowane", "✅ Historia"])
+with tab_pz:
+    if not dane["przyjecia"]: st.info("Brak przyjęć.")
     else:
-        c_h2 = st.columns([1.5, 1.2, 1.2, 4.5, 0.8, 0.8])
-        c_h2[0].write("**Dostawca**"); c_h2[1].write("**Termin**"); c_h2[2].write("**Dodano**"); c_h2[3].write("**Towar**"); c_h2[4].write(""); c_h2[5].write("")
-        st.divider()
         for i, p in enumerate(dane["przyjecia"]):
-            c = st.columns([1.5, 1.2, 1.2, 4.5, 0.8, 0.8])
+            c = st.columns([1.5, 1.2, 4.5, 0.8, 0.8])
             c[0].write(p['dostawca'])
             c[1].write(f"📅 {p.get('termin', '-')}")
-            c[2].write(p['data_p'])
             t_prev = (p['towar'][:60] + '...') if len(p['towar']) > 60 else p['towar']
-            with c[3].popover(f"🚚 {t_prev if t_prev else 'Edytuj'}"):
-                nowe_tow = st.text_area("Towar", value=p['towar'], key=f"pz_e_{i}")
-                nowy_pz_t = st.text_input("Termin", value=p.get('termin', '-'), key=f"pz_dt_{i}")
-                if st.button("Zapisz", key=f"pz_s_{i}"):
+            with c[2].popover(f"🚚 {t_prev if t_prev else 'Edytuj'}"):
+                nowe_tow = st.text_area("Towar", value=p['towar'], key=f"pze_{i}")
+                nowy_pz_t = st.text_input("Termin", value=p.get('termin', '-'), key=f"pzt_{i}")
+                if st.button("Zapisz", key=f"pzs_{i}"):
                     dane["przyjecia"][i]['towar'], dane["przyjecia"][i]['termin'] = nowe_tow, nowy_pz_t
                     zapisz_dane(dane); st.rerun()
-            if c[4].button("✅", key=f"pz_o_{i}"):
+            if c[3].button("✅", key=f"pzo_{i}"):
                 p["data_k"] = datetime.now().strftime("%d.%m %H:%M")
                 dane["przyjecia_historia"].append(dane["przyjecia"].pop(i))
                 zapisz_dane(dane); st.rerun()
-            if c[5].button("❌", key=f"pz_x_{i}"):
+            if c[4].button("❌", key=f"pzx_{i}"):
                 dane["przyjecia"].pop(i); zapisz_dane(dane); st.rerun()
-
-with tab_pz_hist:
-    if dane["przyjecia_historia"]:
-        df_pz_v = pd.DataFrame([{ "Dostawca": r.get("dostawca", "-"), "Termin": r.get("termin", "-"), "Dodano": r.get("data_p", "-"), "Odebrano": r.get("data_k", "-"), "Towar": r.get("towar", "-")} for r in dane["przyjecia_historia"]])
-        st.dataframe(df_pz_v.iloc[::-1], use_container_width=True)
