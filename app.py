@@ -7,7 +7,6 @@ from datetime import datetime
 # --- 1. KONFIGURACJA ---
 st.set_page_config(page_title="GROPAK ERP", layout="wide")
 
-# Stylizacja dla lepszej czytelności tabeli
 st.markdown("""
     <style>
     .stButton>button { width: 100%; border-radius: 2px; height: 1.8em; line-height: 1; padding: 0; }
@@ -39,7 +38,12 @@ def wczytaj_dane():
     if os.path.exists(PLIK_DANYCH):
         try:
             with open(PLIK_DANYCH, "r", encoding="utf-8") as f:
-                return json.load(f)
+                d = json.load(f)
+                # Upewnienie się, że wszystkie klucze istnieją
+                if "w_realizacji" not in d: d["w_realizacji"] = []
+                if "zrealizowane" not in d: d["zrealizowane"] = []
+                if "przyjecia" not in d: d["przyjecia"] = []
+                return d
         except:
             pass
     return {"w_realizacji": [], "zrealizowane": [], "przyjecia": []}
@@ -49,10 +53,8 @@ def zapisz_dane(dane):
         json.dump(dane, f, indent=4)
 
 dane = wczytaj_dane()
-# Zapewnienie kompatybilności struktur
-if "przyjecia" not in dane: dane["przyjecia"] = []
 
-# --- 4. PANEL BOCZNY (WPISYWANIE) ---
+# --- 4. PANEL BOCZNY ---
 with st.sidebar:
     st.title("⚙️ OPERACJE")
     opcja = st.selectbox("Typ dokumentu", ["Zlecenie Produkcji", "Przyjęcie Towaru (PZ)"])
@@ -61,19 +63,20 @@ with st.sidebar:
     if opcja == "Zlecenie Produkcji":
         k_klient = st.text_input("Nazwa Klienta")
         k_kontakt = st.text_input("Telefon / Email")
-        k_opis = st.text_area("Specyfikacja (np. folia 120cm/50m)")
+        k_opis = st.text_area("Specyfikacja")
         if st.button("Zatwierdź Zlecenie"):
             if k_klient:
                 dane["w_realizacji"].append({
                     "klient": k_klient, "kontakt": k_kontakt, "opis": k_opis,
-                    "data_p": datetime.now().strftime("%d.%m %H:%M")
+                    "data_p": datetime.now().strftime("%d.%m %H:%M"),
+                    "data_k": "-" # Miejsce na datę zakończenia
                 })
                 zapisz_dane(dane)
                 st.rerun()
     else:
         p_dostawca = st.text_input("Dostawca")
         p_towar = st.text_input("Towar / Surowiec")
-        p_ilosc = st.text_input("Ilość (kg/szt)")
+        p_ilosc = st.text_input("Ilość")
         if st.button("Zatwierdź Przyjęcie"):
             if p_dostawca and p_towar:
                 dane["przyjecia"].append({
@@ -86,19 +89,18 @@ with st.sidebar:
 # --- 5. WIDOK GŁÓWNY ---
 st.header("📊 System GROPAK Online")
 
-tab1, tab2, tab3 = st.tabs(["🚀 PRODUKCJA", "✅ WYDANIA", "📥 PRZYJĘCIA (PZ)"])
+tab1, tab2, tab3 = st.tabs(["🚀 DO REALIZACJI", "✅ ZREALIZOWANE", "📥 PRZYJĘCIA (PZ)"])
 
 with tab1:
     if not dane["w_realizacji"]:
-        st.info("Brak aktywnych zleceń produkcyjnych.")
+        st.info("Brak aktywnych zleceń.")
     else:
-        # Tabela aktywnych zleceń
         col_h = st.columns([2, 2, 4, 2, 1, 1])
         col_h[0].write("**Klient**")
         col_h[1].write("**Data Przyjęcia**")
         col_h[2].write("**Specyfikacja**")
         col_h[3].write("**Kontakt**")
-        col_h[4].write("**Status**")
+        col_h[4].write("**Akcja**")
         st.divider()
 
         for i, z in enumerate(dane["w_realizacji"]):
@@ -109,10 +111,41 @@ with tab1:
             c[3].write(z['kontakt'])
             if c[4].button("GOTOWE", key=f"z_{i}"):
                 z["data_k"] = datetime.now().strftime("%d.%m %H:%M")
-                dane["zrealizowane"].append(dane["w_realizacji"].pop(i))
+                item = dane["w_realizacji"].pop(i)
+                dane["zrealizowane"].append(item)
                 zapisz_dane(dane)
                 st.rerun()
             if c[5].button("USUŃ", key=f"u_{i}"):
                 dane["w_realizacji"].pop(i)
                 zapisz_dane(dane)
                 st.rerun()
+
+with tab2:
+    if not dane["zrealizowane"]:
+        st.write("Historia jest pusta.")
+    else:
+        # Tworzymy tabelę z danych historycznych
+        df_z = pd.DataFrame(dane["zrealizowane"])
+        # Wybieramy tylko te kolumny, które chcemy pokazać (jeśli istnieją)
+        pokaz = []
+        for col in ["klient", "data_p", "data_k", "opis", "kontakt"]:
+            if col in df_z.columns:
+                pokaz.append(col)
+        
+        df_wyswietl = df_z[pokaz].copy()
+        # Ładne nazwy dla tabeli
+        df_wyswietl.columns = [c.replace('klient', 'Klient').replace('data_p', 'Przyjęto').replace('data_k', 'Wydano').replace('opis', 'Specyfikacja').replace('kontakt', 'Kontakt') for c in df_wyswietl.columns]
+        
+        st.dataframe(df_wyswietl.iloc[::-1], use_container_width=True)
+
+with tab3:
+    if not dane["przyjecia"]:
+        st.write("Brak zarejestrowanych dostaw.")
+    else:
+        df_p = pd.DataFrame(dane["przyjecia"])
+        st.dataframe(df_p.iloc[::-1], use_container_width=True)
+        
+        if st.button("WYCZYŚĆ REJESTR PZ"):
+            dane["przyjecia"] = []
+            zapisz_dane(dane)
+            st.rerun()
