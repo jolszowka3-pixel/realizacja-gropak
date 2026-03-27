@@ -74,7 +74,7 @@ with st.sidebar:
     
     if opcja == "Zlecenie Produkcji":
         k_klient = st.text_input("Klient")
-        k_termin = st.text_input("Planowany termin realizacji (np. 20.03)")
+        k_termin = st.text_input("Termin realizacji (np. 25.03)")
         k_produkty = st.text_area("Produkty")
         if st.button("Zatwierdź Zlecenie"):
             if k_klient:
@@ -89,7 +89,7 @@ with st.sidebar:
                 st.rerun()
     else:
         p_dostawca = st.text_input("Dostawca")
-        p_termin = st.text_input("Planowana data dostawy")
+        p_termin = st.text_input("Termin dostawy")
         p_towar = st.text_area("Towar")
         if st.button("Zatwierdź Przyjęcie"):
             if p_dostawca and p_towar:
@@ -115,20 +115,21 @@ with tab_prod:
     if not dane["w_realizacji"]:
         st.info("Brak aktywnych zleceń produkcyjnych.")
     else:
-        c_h = st.columns([1.5, 1.2, 1.3, 4.0, 1, 1])
-        c_h[0].write("**Klient**"); c_h[1].write("**Termin**"); c_h[2].write("**Dodano**"); c_h[3].write("**Produkty**"); c_h[4].write("**Status**"); c_h[5].write("")
+        # Zwiększyłem szerokość kolumny z Produktami
+        c_h = st.columns([1.5, 1.2, 1.2, 4.5, 0.8, 0.8])
+        c_h[0].write("**Klient**"); c_h[1].write("**Termin**"); c_h[2].write("**Dodano**"); c_h[3].write("**Produkty**"); c_h[4].write(""); c_h[5].write("")
         st.divider()
         for i, z in enumerate(dane["w_realizacji"]):
-            c = st.columns([1.5, 1.2, 1.3, 4.0, 1, 1])
+            c = st.columns([1.5, 1.2, 1.2, 4.5, 0.8, 0.8])
             c[0].write(z['klient'])
             c[1].write(f"📅 {z.get('termin', '-')}")
             c[2].write(z['data_p'])
             
-            p_prev = (z['opis'][:50] + '...') if len(z['opis']) > 50 else z['opis']
-            with c[3].popover(f"📋 {p_prev if p_prev else 'Edytuj'}"):
+            p_prev = (z['opis'][:60] + '...') if len(z['opis']) > 60 else z['opis']
+            with c[3].popover(f"📋 {p_prev if p_prev else 'Otwórz edycję'}"):
                 nowe_p = st.text_area("Edycja produktów", value=z['opis'], key=f"p_edit_{i}")
                 nowy_t = st.text_input("Edycja terminu", value=z.get('termin', '-'), key=f"t_edit_{i}")
-                if st.button("Zapisz zmiany", key=f"p_save_{i}"):
+                if st.button("Zapisz", key=f"p_save_{i}"):
                     dane["w_realizacji"][i]['opis'] = nowe_p
                     dane["w_realizacji"][i]['termin'] = nowy_t
                     zapisz_dane(dane); st.rerun()
@@ -147,10 +148,16 @@ with tab_hist_prod:
         st.write("Brak historii wydań.")
     else:
         df_z = pd.DataFrame(dane["zrealizowane"])
-        # Dodajemy 'termin' do kolumn jeśli istnieje
-        cols_to_show = ["klient", "termin", "data_p", "data_k", "opis"]
-        df_v = df_z[[c for c in cols_to_show if c in df_z.columns]].copy()
-        df_v.columns = ["Klient", "Planowano", "Dodano", "Wydano", "Produkty"]
+        # Bezpieczne wyświetlanie - upewniamy się, że kolumny istnieją
+        df_v = pd.DataFrame([
+            {
+                "Klient": r.get("klient", "-"),
+                "Termin": r.get("termin", "-"),
+                "Dodano": r.get("data_p", "-"),
+                "Wydano": r.get("data_k", "-"),
+                "Produkty": r.get("opis", "-")
+            } for r in dane["zrealizowane"]
+        ])
         st.dataframe(df_v.iloc[::-1], use_container_width=True)
 
 st.write("")
@@ -163,20 +170,20 @@ with tab_pz_plan:
     if not dane["przyjecia"]:
         st.info("Brak zaplanowanych przyjęć.")
     else:
-        c_h2 = st.columns([1.5, 1.2, 1.3, 4.0, 1, 1])
-        c_h2[0].write("**Dostawca**"); c_h2[1].write("**Termin**"); c_h2[2].write("**Dodano**"); c_h2[3].write("**Towar**"); c_h2[4].write("**Status**"); c_h2[5].write("")
+        c_h2 = st.columns([1.5, 1.2, 1.2, 4.5, 0.8, 0.8])
+        c_h2[0].write("**Dostawca**"); c_h2[1].write("**Termin**"); c_h2[2].write("**Dodano**"); c_h2[3].write("**Towar**"); c_h2[4].write(""); c_h2[5].write("")
         st.divider()
         for i, p in enumerate(dane["przyjecia"]):
-            c = st.columns([1.5, 1.2, 1.3, 4.0, 1, 1])
+            c = st.columns([1.5, 1.2, 1.2, 4.5, 0.8, 0.8])
             c[0].write(p['dostawca'])
             c[1].write(f"📅 {p.get('termin', '-')}")
             c[2].write(p['data_p'])
             
-            t_prev = (p['towar'][:50] + '...') if len(p['towar']) > 50 else p['towar']
-            with c[3].popover(f"🚚 {t_prev if t_prev else 'Edytuj'}"):
+            t_prev = (p['towar'][:60] + '...') if len(p['towar']) > 60 else p['towar']
+            with c[3].popover(f"🚚 {t_prev if t_prev else 'Otwórz edycję'}"):
                 nowe_tow = st.text_area("Edycja towaru", value=p['towar'], key=f"pz_t_edit_{i}")
                 nowy_pz_t = st.text_input("Edycja terminu dostawy", value=p.get('termin', '-'), key=f"pz_dt_edit_{i}")
-                if st.button("Zapisz zmiany", key=f"pz_s_{i}"):
+                if st.button("Zapisz", key=f"pz_s_{i}"):
                     dane["przyjecia"][i]['towar'] = nowe_tow
                     dane["przyjecia"][i]['termin'] = nowy_pz_t
                     zapisz_dane(dane); st.rerun()
@@ -194,7 +201,16 @@ with tab_pz_hist:
     if not dane["przyjecia_historia"]:
         st.write("Brak historii przyjęć.")
     else:
-        df_pz_h = pd.DataFrame(dane["przyjecia_historia"])
+        df_pz_v = pd.DataFrame([
+            {
+                "Dostawca": r.get("dostawca", "-"),
+                "Termin": r.get("termin", "-"),
+                "Dodano": r.get("data_p", "-"),
+                "Odebrano": r.get("data_k", "-"),
+                "Towar / Uwagi": r.get("towar", "-")
+            } for r in dane["przyjecia_historia"]
+        ])
+        st.dataframe(df_pz_v.iloc[::-1], use_container_width=True)["przyjecia_historia"])
         cols_pz_show = ["dostawca", "termin", "data_p", "data_k", "towar"]
         df_pz_v = df_pz_h[[c for c in cols_pz_show if c in df_pz_h.columns]].copy()
         df_pz_v.columns = ["Dostawca", "Planowano", "Dodano", "Odebrano", "Towar / Uwagi"]
