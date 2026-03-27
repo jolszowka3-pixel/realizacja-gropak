@@ -115,7 +115,6 @@ with tab_prod:
     if not dane["w_realizacji"]:
         st.info("Brak aktywnych zleceń produkcyjnych.")
     else:
-        # Zwiększyłem szerokość kolumny z Produktami
         c_h = st.columns([1.5, 1.2, 1.2, 4.5, 0.8, 0.8])
         c_h[0].write("**Klient**"); c_h[1].write("**Termin**"); c_h[2].write("**Dodano**"); c_h[3].write("**Produkty**"); c_h[4].write(""); c_h[5].write("")
         st.divider()
@@ -147,17 +146,16 @@ with tab_hist_prod:
     if not dane["zrealizowane"]:
         st.write("Brak historii wydań.")
     else:
-        df_z = pd.DataFrame(dane["zrealizowane"])
-        # Bezpieczne wyświetlanie - upewniamy się, że kolumny istnieją
-        df_v = pd.DataFrame([
-            {
+        lista_hist_prod = []
+        for r in dane["zrealizowane"]:
+            lista_hist_prod.append({
                 "Klient": r.get("klient", "-"),
                 "Termin": r.get("termin", "-"),
                 "Dodano": r.get("data_p", "-"),
                 "Wydano": r.get("data_k", "-"),
                 "Produkty": r.get("opis", "-")
-            } for r in dane["zrealizowane"]
-        ])
+            })
+        df_v = pd.DataFrame(lista_hist_prod)
         st.dataframe(df_v.iloc[::-1], use_container_width=True)
 
 st.write("")
@@ -201,17 +199,14 @@ with tab_pz_hist:
     if not dane["przyjecia_historia"]:
         st.write("Brak historii przyjęć.")
     else:
-        df_pz_v = pd.DataFrame([
-            {
+        lista_hist_pz = []
+        for r in dane["przyjecia_historia"]:
+            lista_hist_pz.append({
                 "Dostawca": r.get("dostawca", "-"),
                 "Termin": r.get("termin", "-"),
                 "Dodano": r.get("data_p", "-"),
                 "Odebrano": r.get("data_k", "-"),
                 "Towar / Uwagi": r.get("towar", "-")
-            } for r in dane["przyjecia_historia"]
-        ])
-        st.dataframe(df_pz_v.iloc[::-1], use_container_width=True)["przyjecia_historia"])
-        cols_pz_show = ["dostawca", "termin", "data_p", "data_k", "towar"]
-        df_pz_v = df_pz_h[[c for c in cols_pz_show if c in df_pz_h.columns]].copy()
-        df_pz_v.columns = ["Dostawca", "Planowano", "Dodano", "Odebrano", "Towar / Uwagi"]
+            })
+        df_pz_v = pd.DataFrame(lista_hist_pz)
         st.dataframe(df_pz_v.iloc[::-1], use_container_width=True)
