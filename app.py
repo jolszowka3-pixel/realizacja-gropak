@@ -4,41 +4,44 @@ import os
 import pandas as pd
 from datetime import datetime
 
-# --- KONFIGURACJA ---
+# --- 1. KONFIGURACJA ---
 st.set_page_config(page_title="GROPAK ERP", layout="wide")
 
-# --- STYLIZACJA CSS (Dla profesjonalnego wyglądu) ---
+# Stylizacja dla lepszej czytelności tabeli
 st.markdown("""
     <style>
     .stButton>button { width: 100%; border-radius: 2px; height: 1.8em; line-height: 1; padding: 0; }
-    .main .block-container { padding-top: 2rem; }
-    div[data-testid="stExpander"] { border: none; box-shadow: none; }
+    .main .block-container { padding-top: 1.5rem; }
+    thead tr th { background-color: #f0f2f6 !important; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- LOGOWANIE ---
+# --- 2. LOGOWANIE ---
 def check_password():
     def password_entered():
-        if st.session_state["password"] == "gropak2026": # TWOJE HASŁO
+        if st.session_state["password"] == "gropak2026": 
             st.session_state["password_correct"] = True
             del st.session_state["password"]
         else:
             st.session_state["password_correct"] = False
     if "password_correct" not in st.session_state:
-        st.text_input("Logowanie do systemu GROPAK", type="password", on_change=password_entered, key="password")
+        st.text_input("Logowanie GROPAK ERP", type="password", on_change=password_entered, key="password")
         return False
     return st.session_state.get("password_correct", False)
 
 if not check_password():
     st.stop()
 
-# --- DANE ---
+# --- 3. BAZA DANYCH ---
 PLIK_DANYCH = "baza_gropak_v3.json"
 
 def wczytaj_dane():
     if os.path.exists(PLIK_DANYCH):
-        with open(PLIK_DANYCH, "r", encoding="utf-8") as f:
-            return json.load(f)
+        try:
+            with open(PLIK_DANYCH, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except:
+            pass
     return {"w_realizacji": [], "zrealizowane": [], "przyjecia": []}
 
 def zapisz_dane(dane):
@@ -46,18 +49,20 @@ def zapisz_dane(dane):
         json.dump(dane, f, indent=4)
 
 dane = wczytaj_dane()
+# Zapewnienie kompatybilności struktur
+if "przyjecia" not in dane: dane["przyjecia"] = []
 
-# --- SIDEBAR (FORMULARZE) ---
+# --- 4. PANEL BOCZNY (WPISYWANIE) ---
 with st.sidebar:
-    st.title("⚙️ PANEL KONTROLNY")
-    opcja = st.selectbox("Typ operacji", ["Nowe Zamówienie", "Przyjęcie Towaru (PZ)"])
+    st.title("⚙️ OPERACJE")
+    opcja = st.selectbox("Typ dokumentu", ["Zlecenie Produkcji", "Przyjęcie Towaru (PZ)"])
     st.divider()
     
-    if opcja == "Nowe Zamówienie":
-        k_klient = st.text_input("Klient")
-        k_kontakt = st.text_input("Kontakt")
-        k_opis = st.text_area("Specyfikacja zamówienia")
-        if st.button("Zatwierdź zamówienie"):
+    if opcja == "Zlecenie Produkcji":
+        k_klient = st.text_input("Nazwa Klienta")
+        k_kontakt = st.text_input("Telefon / Email")
+        k_opis = st.text_area("Specyfikacja (np. folia 120cm/50m)")
+        if st.button("Zatwierdź Zlecenie"):
             if k_klient:
                 dane["w_realizacji"].append({
                     "klient": k_klient, "kontakt": k_kontakt, "opis": k_opis,
@@ -67,9 +72,9 @@ with st.sidebar:
                 st.rerun()
     else:
         p_dostawca = st.text_input("Dostawca")
-        p_towar = st.text_input("Towar")
-        p_ilosc = st.text_input("Ilość")
-        if st.button("Zatwierdź PZ"):
+        p_towar = st.text_input("Towar / Surowiec")
+        p_ilosc = st.text_input("Ilość (kg/szt)")
+        if st.button("Zatwierdź Przyjęcie"):
             if p_dostawca and p_towar:
                 dane["przyjecia"].append({
                     "dostawca": p_dostawca, "towar": p_towar, "ilosc": p_ilosc,
@@ -78,23 +83,22 @@ with st.sidebar:
                 zapisz_dane(dane)
                 st.rerun()
 
-# --- GŁÓWNY WIDOK ---
-st.header("📊 System Zarządzania Produkcją GROPAK")
+# --- 5. WIDOK GŁÓWNY ---
+st.header("📊 System GROPAK Online")
 
-tab1, tab2, tab3 = st.tabs(["AKTUALNE ZLECENIA", "HISTORIA WYDAŃ", "REJESTR PRZYJĘĆ (PZ)"])
+tab1, tab2, tab3 = st.tabs(["🚀 PRODUKCJA", "✅ WYDANIA", "📥 PRZYJĘCIA (PZ)"])
 
 with tab1:
     if not dane["w_realizacji"]:
-        st.write("Brak aktywnych zleceń.")
+        st.info("Brak aktywnych zleceń produkcyjnych.")
     else:
-        # Nagłówki tabeli
-        cols = st.columns([2, 2, 4, 2, 1, 1])
-        cols[0].write("**Klient**")
-        cols[1].write("**Data**")
-        cols[2].write("**Szczegóły**")
-        cols[3].write("**Kontakt**")
-        cols[4].write("**Akcja**")
-        cols[5].write("")
+        # Tabela aktywnych zleceń
+        col_h = st.columns([2, 2, 4, 2, 1, 1])
+        col_h[0].write("**Klient**")
+        col_h[1].write("**Data Przyjęcia**")
+        col_h[2].write("**Specyfikacja**")
+        col_h[3].write("**Kontakt**")
+        col_h[4].write("**Status**")
         st.divider()
 
         for i, z in enumerate(dane["w_realizacji"]):
@@ -103,31 +107,12 @@ with tab1:
             c[1].write(z['data_p'])
             c[2].write(z['opis'])
             c[3].write(z['kontakt'])
-            if c[4].button("Gotowe", key=f"z_{i}"):
+            if c[4].button("GOTOWE", key=f"z_{i}"):
                 z["data_k"] = datetime.now().strftime("%d.%m %H:%M")
                 dane["zrealizowane"].append(dane["w_realizacji"].pop(i))
                 zapisz_dane(dane)
                 st.rerun()
-            if c[5].button("Usuń", key=f"u_{i}"):
+            if c[5].button("USUŃ", key=f"u_{i}"):
                 dane["w_realizacji"].pop(i)
                 zapisz_dane(dane)
                 st.rerun()
-
-with tab2:
-    if dane["zrealizowane"]:
-        df_z = pd.DataFrame(dane["zrealizowane"])
-        df_z.columns = ["Klient", "Kontakt", "Opis", "Przyjęto", "Zrealizowano"]
-        st.table(df_z.iloc[::-1]) # Najnowsze na górze
-
-with tab3:
-    if dane["przyjecia"]:
-        df_p = pd.DataFrame(dane["przyjecia"])
-        df_p.columns = ["Dostawca", "Towar", "Ilość", "Data"]
-        st.table(df_p.iloc[::-1])
-    else:
-        st.write("Brak zarejestrowanych dostaw.")
-                dane["przyjecia"] = []
-                zapisz_dane(dane)
-                st.rerun()
-    else:
-        st.info("Brak zarejestrowanych dostaw.")
