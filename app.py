@@ -18,7 +18,6 @@ st.markdown("""
         text-align: left !important; 
         color: #1f77b4 !important;
     }
-    /* Stylizacja nagłówków sekcji */
     .section-header {
         background-color: #f0f2f6;
         padding: 10px;
@@ -54,12 +53,13 @@ def wczytaj_dane():
         try:
             with open(PLIK_DANYCH, "r", encoding="utf-8") as f:
                 d = json.load(f)
-                if "w_realizacji" not in d: d["w_realizacji"] = []
-                if "zrealizowane" not in d: d["zrealizowane"] = []
-                if "przyjecia" not in d: d["przyjecia"] = []
+                # Inicjalizacja brakujących kluczy
+                keys = ["w_realizacji", "zrealizowane", "przyjecia", "przyjecia_historia"]
+                for k in keys:
+                    if k not in d: d[k] = []
                 return d
         except: pass
-    return {"w_realizacji": [], "zrealizowane": [], "przyjecia": []}
+    return {"w_realizacji": [], "zrealizowane": [], "przyjecia": [], "przyjecia_historia": []}
 
 def zapisz_dane(dane):
     with open(PLIK_DANYCH, "w", encoding="utf-8") as f:
@@ -79,10 +79,8 @@ with st.sidebar:
         if st.button("Zatwierdź Zlecenie"):
             if k_klient:
                 dane["w_realizacji"].append({
-                    "klient": k_klient, 
-                    "opis": k_produkty,
-                    "data_p": datetime.now().strftime("%d.%m %H:%M"), 
-                    "data_k": "-"
+                    "klient": k_klient, "opis": k_produkty,
+                    "data_p": datetime.now().strftime("%d.%m %H:%M"), "data_k": "-"
                 })
                 zapisz_dane(dane)
                 st.rerun()
@@ -92,9 +90,8 @@ with st.sidebar:
         if st.button("Zatwierdź Przyjęcie"):
             if p_dostawca and p_towar:
                 dane["przyjecia"].append({
-                    "dostawca": p_dostawca, 
-                    "towar": p_towar, 
-                    "data": datetime.now().strftime("%d.%m %H:%M")
+                    "dostawca": p_dostawca, "towar": p_towar, 
+                    "data": datetime.now().strftime("%d.%m %H:%M"), "data_koniec": "-"
                 })
                 zapisz_dane(dane)
                 st.rerun()
@@ -103,7 +100,7 @@ with st.sidebar:
 st.header("📊 System GROPAK Online")
 st.write("---")
 
-# --- SEKCJA A: ZAMÓWIENIA I REALIZACJA ---
+# --- SEKCJA A: PRODUKCJA I WYDANIA ---
 st.markdown('<div class="section-header">📦 ZAMÓWIENIA I REALIZACJA PRODUKCJI</div>', unsafe_allow_html=True)
 tab_prod, tab_hist = st.tabs(["🚀 Bieżąca Produkcja", "✅ Historia Wydań"])
 
@@ -111,93 +108,66 @@ with tab_prod:
     if not dane["w_realizacji"]:
         st.info("Brak aktywnych zleceń produkcyjnych.")
     else:
-        col_h = st.columns([2, 1.5, 5.5, 1, 1])
-        col_h[0].write("**Klient**")
-        col_h[1].write("**Data**")
-        col_h[2].write("**Produkty**")
-        col_h[3].write("**Status**")
-        col_h[4].write("")
-        
+        c_h = st.columns([2, 1.5, 5.5, 1, 1])
+        c_h[0].write("**Klient**"); c_h[1].write("**Data**"); c_h[2].write("**Produkty**"); c_h[3].write("**Status**")
         for i, z in enumerate(dane["w_realizacji"]):
             c = st.columns([2, 1.5, 5.5, 1, 1])
             c[0].write(z['klient'])
             c[1].write(z['data_p'])
-            
             prod_preview = (z['opis'][:65] + '...') if len(z['opis']) > 65 else z['opis']
             with c[2].popover(f"📋 {prod_preview if prod_preview else 'Edytuj'}"):
-                st.write("**Edytuj produkty:**")
-                nowe_produkty = st.text_area("Treść", value=z['opis'], key=f"prod_{i}", label_visibility="collapsed")
-                if st.button("Zapisz", key=f"save_{i}"):
-                    dane["w_realizacji"][i]['opis'] = nowe_produkty
-                    zapisz_dane(dane)
-                    st.rerun()
-            
-            if c[3].button("GOTOWE", key=f"z_{i}"):
+                nowe_p = st.text_area("Edycja", value=z['opis'], key=f"p_edit_{i}")
+                if st.button("Zapisz", key=f"p_save_{i}"):
+                    dane["w_realizacji"][i]['opis'] = nowe_p
+                    zapisz_dane(dane); st.rerun()
+            if c[3].button("GOTOWE", key=f"p_done_{i}"):
                 z["data_k"] = datetime.now().strftime("%d.%m %H:%M")
-                item = dane["w_realizacji"].pop(i)
-                dane["zrealizowane"].append(item)
-                zapisz_dane(dane)
-                st.rerun()
-            
-            if c[4].button("❌", key=f"u_{i}"):
+                dane["zrealizowane"].append(dane["w_realizacji"].pop(i))
+                zapisz_dane(dane); st.rerun()
+            if c[4].button("❌", key=f"p_del_{i}"):
                 dane["w_realizacji"].pop(i)
-                zapisz_dane(dane)
-                st.rerun()
+                zapisz_dane(dane); st.rerun()
 
 with tab_hist:
-    if not dane["zrealizowane"]:
-        st.write("Brak historii wydań.")
+    if not dane["zrealizowane"]: st.write("Brak historii wydań.")
     else:
         df_z = pd.DataFrame(dane["zrealizowane"])
-        istniejace = [col for col in ["klient", "data_p", "data_k", "opis"] if col in df_z.columns]
-        df_wyswietl = df_z[istniejace].copy()
-        df_wyswietl.columns = ["Klient", "Przyjęto", "Wydano", "Produkty"]
-        st.dataframe(df_wyswietl.iloc[::-1], use_container_width=True)
+        df_z.columns = ["Klient", "Produkty", "Przyjęto", "Wydano"]
+        st.dataframe(df_z[["Klient", "Przyjęto", "Wydano", "Produkty"]].iloc[::-1], use_container_width=True)
 
 st.write("")
-st.write("")
 
-# --- SEKCJA B: PLANOWANE PRZYJĘCIA ---
+# --- SEKCJA B: LOGISTYKA I PRZYJĘCIA ---
 st.markdown('<div class="section-header">📥 LOGISTYKA I PRZYJĘCIA TOWARU</div>', unsafe_allow_html=True)
-tab_pz = st.tabs(["🚚 Rejestr Przyjęć (PZ)"])
+tab_pz_plan, tab_pz_hist = st.tabs(["🚚 Zaplanowane Dostawy", "✅ Historia Przyjęć"])
 
-with tab_pz[0]:
+with tab_pz_plan:
     if not dane["przyjecia"]:
-        st.info("Brak zarejestrowanych planowanych przyjęć.")
+        st.info("Brak zaplanowanych przyjęć.")
     else:
-        col_pz = st.columns([2.5, 1.5, 6, 1])
-        col_pz[0].write("**Dostawca**")
-        col_pz[1].write("**Data**")
-        col_pz[2].write("**Towar / Uwagi**")
-        col_pz[3].write("")
-        
+        c_h2 = st.columns([2, 1.5, 5.5, 1, 1])
+        c_h2[0].write("**Dostawca**"); c_h2[1].write("**Data**"); c_h2[2].write("**Towar**"); c_h2[3].write("**Status**")
         for i, p in enumerate(dane["przyjecia"]):
-            c = st.columns([2.5, 1.5, 6, 1])
+            c = st.columns([2, 1.5, 5.5, 1, 1])
             c[0].write(p['dostawca'])
             c[1].write(p['data'])
-            
-            towar_preview = (p['towar'][:65] + '...') if len(p['towar']) > 65 else p['towar']
-            with c[2].popover(f"🚚 {towar_preview if towar_preview else 'Edytuj'}"):
-                st.write("**Edytuj szczegóły towaru:**")
-                nowy_towar = st.text_area("Treść PZ", value=p['towar'], key=f"pz_t_{i}", label_visibility="collapsed")
-                if st.button("Zapisz", key=f"pz_save_{i}"):
-                    dane["przyjecia"][i]['towar'] = nowy_towar
-                    zapisz_dane(dane)
-                    st.rerun()
-            
-            if c[3].button("❌", key=f"pz_u_{i}"):
+            tow_preview = (p['towar'][:65] + '...') if len(p['towar']) > 65 else p['towar']
+            with c[2].popover(f"🚚 {tow_preview if tow_preview else 'Edytuj'}"):
+                nowe_t = st.text_area("Edycja PZ", value=p['towar'], key=f"pz_edit_{i}")
+                if st.button("Zapisz", key=f"pz_s_{i}"):
+                    dane["przyjecia"][i]['towar'] = nowe_t
+                    zapisz_dane(dane); st.rerun()
+            if c[3].button("✅", key=f"pz_ok_{i}", help="Potwierdź odbiór dostawy"):
+                p["data_koniec"] = datetime.now().strftime("%d.%m %H:%M")
+                dane["przyjecia_historia"].append(dane["przyjecia"].pop(i))
+                zapisz_dane(dane); st.rerun()
+            if c[4].button("❌", key=f"pz_del_{i}"):
                 dane["przyjecia"].pop(i)
-                zapisz_dane(dane)
-                st.rerun()
+                zapisz_dane(dane); st.rerun()
 
-        st.divider()
-        if st.button("WYCZYŚĆ CAŁY REJESTR PZ", help="Usuwa wszystkie wpisy z planowanych przyjęć"):
-            dane["przyjecia"] = []
-            zapisz_dane(dane)
-            st.rerun()
-
-        st.divider()
-        if st.button("WYCZYŚĆ CAŁY REJESTR PZ"):
-            dane["przyjecia"] = []
-            zapisz_dane(dane)
-            st.rerun()
+with tab_pz_hist:
+    if not dane["przyjecia_historia"]: st.write("Brak historii przyjęć.")
+    else:
+        df_pz_h = pd.DataFrame(dane["przyjecia_historia"])
+        df_pz_h.columns = ["Dostawca", "Towar", "Planowane", "Odebrano"]
+        st.dataframe(df_pz_h[["Dostawca", "Planowane", "Odebrano", "Towar"]].iloc[::-1], use_container_width=True)
