@@ -79,12 +79,14 @@ with st.sidebar:
                 st.rerun()
     else:
         p_dostawca = st.text_input("Dostawca")
-        p_towar = st.text_input("Towar")
+        p_towar = st.text_area("Towar")
         p_ilosc = st.text_input("Ilość")
         if st.button("Zatwierdź Przyjęcie"):
             if p_dostawca and p_towar:
                 dane["przyjecia"].append({
-                    "dostawca": p_dostawca, "towar": p_towar, "ilosc": p_ilosc,
+                    "dostawca": p_dostawca, 
+                    "towar": p_towar, 
+                    "ilosc": p_ilosc,
                     "data": datetime.now().strftime("%d.%m %H:%M")
                 })
                 zapisz_dane(dane)
@@ -95,6 +97,7 @@ st.header("📊 System GROPAK Online")
 
 tab1, tab2, tab3 = st.tabs(["🚀 PRODUKCJA", "✅ HISTORIA WYDAŃ", "📥 PRZYJĘCIA (PZ)"])
 
+# --- TAB 1: PRODUKCJA ---
 with tab1:
     if not dane["w_realizacji"]:
         st.info("Brak aktywnych zleceń.")
@@ -133,6 +136,7 @@ with tab1:
                 zapisz_dane(dane)
                 st.rerun()
 
+# --- TAB 2: HISTORIA ---
 with tab2:
     if not dane["zrealizowane"]:
         st.write("Brak historii.")
@@ -143,14 +147,42 @@ with tab2:
         df_wyswietl.columns = ["Klient", "Przyjęto", "Wydano", "Produkty"]
         st.dataframe(df_wyswietl.iloc[::-1], use_container_width=True)
 
+# --- TAB 3: PRZYJĘCIA (PZ) - TERAZ JAK REALIZACJA ---
 with tab3:
     if not dane["przyjecia"]:
-        st.write("Brak zarejestrowanych dostaw.")
+        st.info("Brak zarejestrowanych dostaw.")
     else:
-        df_p = pd.DataFrame(dane["przyjecia"])
-        df_p.columns = ["Dostawca", "Towar", "Ilość", "Data PZ"]
-        st.dataframe(df_p.iloc[::-1], use_container_width=True)
-        if st.button("WYCZYŚĆ REJESTR PZ"):
+        col_pz = st.columns([2, 1.5, 4.5, 1, 1])
+        col_pz[0].write("**Dostawca**")
+        col_pz[1].write("**Data**")
+        col_pz[2].write("**Towar**")
+        col_pz[3].write("**Ilość**")
+        col_pz[4].write("")
+        st.divider()
+
+        for i, p in enumerate(dane["przyjecia"]):
+            c = st.columns([2, 1.5, 4.5, 1, 1])
+            c[0].write(p['dostawca'])
+            c[1].write(p['data'])
+            
+            towar_preview = (p['towar'][:50] + '...') if len(p['towar']) > 50 else p['towar']
+            with c[2].popover(f"🚚 {towar_preview if towar_preview else 'Brak opisu'}"):
+                st.write("**Edytuj szczegóły towaru:**")
+                nowy_towar = st.text_area("Treść PZ", value=p['towar'], key=f"pz_t_{i}", label_visibility="collapsed")
+                if st.button("Zapisz", key=f"pz_save_{i}"):
+                    dane["przyjecia"][i]['towar'] = nowy_towar
+                    zapisz_dane(dane)
+                    st.rerun()
+            
+            c[3].write(p['ilosc'])
+            
+            if c[4].button("❌", key=f"pz_u_{i}"):
+                dane["przyjecia"].pop(i)
+                zapisz_dane(dane)
+                st.rerun()
+
+        st.divider()
+        if st.button("WYCZYŚĆ CAŁY REJESTR PZ"):
             dane["przyjecia"] = []
             zapisz_dane(dane)
             st.rerun()
