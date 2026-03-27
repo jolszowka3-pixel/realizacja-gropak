@@ -9,11 +9,18 @@ st.set_page_config(page_title="GROPAK ERP", layout="wide")
 
 st.markdown("""
     <style>
-    .stButton>button { width: 100%; border-radius: 2px; height: 1.8em; line-height: 1; padding: 0; }
+    /* Profesjonalna stylizacja przycisków w tabeli */
+    .stButton>button { width: 100%; border-radius: 2px; height: 1.9em; line-height: 1; padding: 2px; font-size: 14px; }
     .main .block-container { padding-top: 1.5rem; }
-    thead tr th { background-color: #f0f2f6 !important; }
-    /* Styl dla pól edycyjnych w tabeli */
-    div[data-baseweb="input"] { background-color: transparent !important; border: 1px solid #e0e0e0 !important; }
+    thead tr th { background-color: #f8f9fa !important; color: #333 !important; }
+    /* Stylizacja przycisku specyfikacji, żeby wyglądał bardziej jak tekst */
+    div[data-testid="stPopover"] > button { 
+        border: none !important; 
+        background: transparent !important; 
+        text-align: left !important; 
+        color: #1f77b4 !important;
+        text-decoration: underline;
+    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -45,8 +52,7 @@ def wczytaj_dane():
                 if "zrealizowane" not in d: d["zrealizowane"] = []
                 if "przyjecia" not in d: d["przyjecia"] = []
                 return d
-        except:
-            pass
+        except: pass
     return {"w_realizacji": [], "zrealizowane": [], "przyjecia": []}
 
 def zapisz_dane(dane):
@@ -64,102 +70,12 @@ with st.sidebar:
     if opcja == "Zlecenie Produkcji":
         k_klient = st.text_input("Nazwa Klienta")
         k_kontakt = st.text_input("Telefon / Email")
-        k_opis = st.text_area("Specyfikacja")
+        k_opis = st.text_area("Specyfikacja (np. folia 120cm/50m)")
         if st.button("Zatwierdź Zlecenie"):
             if k_klient:
                 dane["w_realizacji"].append({
                     "klient": k_klient, "kontakt": k_kontakt, "opis": k_opis,
-                    "data_p": datetime.now().strftime("%d.%m %H:%M"),
-                    "data_k": "-"
+                    "data_p": datetime.now().strftime("%d.%m %H:%M"), "data_k": "-"
                 })
                 zapisz_dane(dane)
-                st.rerun()
-    else:
-        p_dostawca = st.text_input("Dostawca")
-        p_towar = st.text_input("Towar / Surowiec")
-        p_ilosc = st.text_input("Ilość")
-        if st.button("Zatwierdź Przyjęcie"):
-            if p_dostawca and p_towar:
-                dane["przyjecia"].append({
-                    "dostawca": p_dostawca, "towar": p_towar, "ilosc": p_ilosc,
-                    "data": datetime.now().strftime("%d.%m %H:%M")
-                })
-                zapisz_dane(dane)
-                st.rerun()
-
-# --- 5. WIDOK GŁÓWNY ---
-st.header("📊 System GROPAK Online")
-
-tab1, tab2, tab3 = st.tabs(["🚀 PRODUKCJA", "✅ HISTORIA WYDAŃ", "📥 PRZYJĘCIA (PZ)"])
-
-with tab1:
-    if not dane["w_realizacji"]:
-        st.info("Brak aktywnych zleceń.")
-    else:
-        # Nagłówki tabeli
-        col_h = st.columns([2, 2, 4, 2, 1, 1])
-        col_h[0].write("**Klient**")
-        col_h[1].write("**Data Przyjęcia**")
-        col_h[2].write("**Specyfikacja (Edytowalna)**")
-        col_h[3].write("**Kontakt**")
-        col_h[4].write("**Akcja**")
-        st.divider()
-
-        for i, z in enumerate(dane["w_realizacji"]):
-            c = st.columns([2, 2, 4, 2, 1, 1])
-            c[0].write(z['klient'])
-            c[1].write(z['data_p'])
-            
-            # --- EDYTOWALNE POLE SPECYFIKACJI ---
-            nowy_opis = c[2].text_input(
-                "Edytuj opis", 
-                value=z['opis'], 
-                key=f"edit_{i}", 
-                label_visibility="collapsed"
-            )
-            
-            # Jeśli treść się zmieniła, zapisujemy do bazy
-            if nowy_opis != z['opis']:
-                dane["w_realizacji"][i]['opis'] = nowy_opis
-                zapisz_dane(dane)
-                st.rerun()
-            # ------------------------------------
-
-            c[3].write(z['kontakt'])
-            
-            if c[4].button("GOTOWE", key=f"z_{i}"):
-                z["data_k"] = datetime.now().strftime("%d.%m %H:%M")
-                item = dane["w_realizacji"].pop(i)
-                dane["zrealizowane"].append(item)
-                zapisz_dane(dane)
-                st.rerun()
-            
-            if c[5].button("USUŃ", key=f"u_{i}"):
-                dane["w_realizacji"].pop(i)
-                zapisz_dane(dane)
-                st.rerun()
-
-with tab2:
-    if not dane["zrealizowane"]:
-        st.write("Historia jest pusta.")
-    else:
-        df_z = pd.DataFrame(dane["zrealizowane"])
-        pokaz = []
-        for col in ["klient", "data_p", "data_k", "opis", "kontakt"]:
-            if col in df_z.columns:
-                pokaz.append(col)
-        
-        df_wyswietl = df_z[pokaz].copy()
-        df_wyswietl.columns = [c.replace('klient', 'Klient').replace('data_p', 'Przyjęto').replace('data_k', 'Wydano').replace('opis', 'Specyfikacja').replace('kontakt', 'Kontakt') for c in df_wyswietl.columns]
-        st.dataframe(df_wyswietl.iloc[::-1], use_container_width=True)
-
-with tab3:
-    if not dane["przyjecia"]:
-        st.write("Brak zarejestrowanych dostaw.")
-    else:
-        df_p = pd.DataFrame(dane["przyjecia"])
-        st.dataframe(df_p.iloc[::-1], use_container_width=True)
-        if st.button("WYCZYŚĆ REJESTR PZ"):
-            dane["przyjecia"] = []
-            zapisz_dane(dane)
-            st.rerun()
+                st.
