@@ -66,13 +66,12 @@ with st.sidebar:
     
     if opcja == "Zlecenie Produkcji":
         k_klient = st.text_input("Nazwa Klienta")
-        # USUNIĘTO KONTAKT
-        k_opis = st.text_area("Specyfikacja (np. folia 120cm/50m)")
+        k_produkty = st.text_area("Produkty (np. folia bąbelkowa B1 120cm/50m)")
         if st.button("Zatwierdź Zlecenie"):
             if k_klient:
                 dane["w_realizacji"].append({
                     "klient": k_klient, 
-                    "opis": k_opis,
+                    "opis": k_produkty,
                     "data_p": datetime.now().strftime("%d.%m %H:%M"), 
                     "data_k": "-"
                 })
@@ -98,13 +97,12 @@ tab1, tab2, tab3 = st.tabs(["🚀 PRODUKCJA", "✅ HISTORIA WYDAŃ", "📥 PRZYJ
 
 with tab1:
     if not dane["w_realizacji"]:
-        st.info("Brak aktywnych zleceń.")
+        st.info("Brak aktywnych zleceń produkcyjnych.")
     else:
-        # Przemodelowane proporcje kolumn (więcej miejsca na specyfikację)
         col_h = st.columns([2, 1.5, 5.5, 1, 1])
         col_h[0].write("**Klient**")
         col_h[1].write("**Data**")
-        col_h[2].write("**Specyfikacja (Edycja)**")
+        col_h[2].write("**Produkty (Kliknij, aby edytować)**")
         col_h[3].write("**Status**")
         col_h[4].write("")
         st.divider()
@@ -114,12 +112,13 @@ with tab1:
             c[0].write(z['klient'])
             c[1].write(z['data_p'])
             
-            desc_preview = (z['opis'][:60] + '...') if len(z['opis']) > 60 else z['opis']
-            with c[2].popover(f"📝 {desc_preview}"):
-                st.write("**Edytuj szczegóły zamówienia:**")
-                nowa_spec = st.text_area("Treść", value=z['opis'], key=f"txt_{i}")
+            # Podgląd produktów na przycisku
+            prod_preview = (z['opis'][:65] + '...') if len(z['opis']) > 65 else z['opis']
+            with c[2].popover(f"📦 {prod_preview}"):
+                st.write("**Edytuj listę produktów:**")
+                nowe_produkty = st.text_area("Lista towarów", value=z['opis'], key=f"prod_{i}")
                 if st.button("Zapisz", key=f"save_{i}"):
-                    dane["w_realizacji"][i]['opis'] = nowa_spec
+                    dane["w_realizacji"][i]['opis'] = nowe_produkty
                     zapisz_dane(dane)
                     st.rerun()
             
@@ -137,20 +136,20 @@ with tab1:
 
 with tab2:
     if not dane["zrealizowane"]:
-        st.write("Historia jest pusta.")
+        st.write("Brak historii wydania.")
     else:
         df_z = pd.DataFrame(dane["zrealizowane"])
-        # Wyświetlamy tylko potrzebne kolumny w historii
         istniejace = [col for col in ["klient", "data_p", "data_k", "opis"] if col in df_z.columns]
         df_wyswietl = df_z[istniejace].copy()
-        df_wyswietl.columns = ["Klient", "Przyjęto", "Wydano", "Specyfikacja"]
+        df_wyswietl.columns = ["Klient", "Przyjęto", "Wydano", "Produkty"]
         st.dataframe(df_wyswietl.iloc[::-1], use_container_width=True)
 
 with tab3:
     if not dane["przyjecia"]:
-        st.write("Brak zarejestrowanych dostaw.")
+        st.write("Brak zarejestrowanych dostaw (PZ).")
     else:
         df_p = pd.DataFrame(dane["przyjecia"])
+        df_p.columns = ["Dostawca", "Towar / Surowiec", "Ilość", "Data PZ"]
         st.dataframe(df_p.iloc[::-1], use_container_width=True)
         if st.button("WYCZYŚĆ REJESTR PZ"):
             dane["przyjecia"] = []
