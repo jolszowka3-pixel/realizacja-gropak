@@ -12,23 +12,25 @@ st.markdown("""
     <style>
     .stButton>button { width: 100%; border-radius: 4px; height: 2.1em; font-size: 12px; font-weight: 500; padding: 0px; }
     
-    /* UNIWERSALNE STYLE DLA PRZYCISKÓW AKCJI (Kolumna 5 i 6 we wszystkich sekcjach) */
-    div[data-testid="column"]:nth-of-type(5) button {
+    /* UNIWERSALNE STYLE DLA PRZYCISKÓW AKCJI (Precyzyjny selektor dla wszystkich sekcji) */
+    /* Zielone przyciski akcji (GOTOWE / OK) - Kolumna 5 */
+    div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-of-type(5) button {
         border: 1px solid #c3e6cb !important;
         color: #1e7e34 !important;
         background-color: #f8fff9 !important;
     }
-    div[data-testid="column"]:nth-of-type(5) button:hover {
+    div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-of-type(5) button:hover {
         background-color: #28a745 !important;
         color: white !important;
     }
     
-    div[data-testid="column"]:nth-of-type(6) button {
+    /* Czerwone przyciski usuwania (X) - Kolumna 6 */
+    div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-of-type(6) button {
         border: 1px solid #f5c6cb !important;
         color: #bd2130 !important;
         background-color: #fff9f9 !important;
     }
-    div[data-testid="column"]:nth-of-type(6) button:hover {
+    div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-of-type(6) button:hover {
         background-color: #dc3545 !important;
         color: white !important;
     }
@@ -273,6 +275,7 @@ with t_dys1:
     else:
         st.markdown('<div style="display: flex;"><div class="label-text" style="width: 16%;">Tytuł / Cel</div><div class="label-text" style="width: 13%;">Termin (edytuj)</div><div class="label-text" style="width: 13%;">Dodano</div><div class="label-text">Opis zadania</div></div>', unsafe_allow_html=True)
         for i, d in enumerate(dane["dyspozycje"]):
+            # Układ [1.5, 1.2, 1.2, 4.5, 0.8, 0.4] zachowany
             c = st.columns([1.5, 1.2, 1.2, 4.5, 0.8, 0.4])
             c[0].write(f"**{d['tytul']}**")
             new_term_d = c[1].text_input("T", value=d.get('termin', '-'), key=f"t_d_{i}", label_visibility="collapsed")
@@ -283,10 +286,14 @@ with t_dys1:
                 n_do = st.text_area("Opis", value=d['opis'], key=f"pde_{i}")
                 if st.button("Zapisz", key=f"pds_{i}"):
                     dane["dyspozycje"][i]['opis'] = n_do; zapisz_dane(dane); st.rerun()
+            
+            # Przycisk w kolumnie 5 -> Zielony
             if c[4].button("GOTOWE", key=f"pdd_{i}"):
                 d["data_k"] = datetime.now().strftime("%d.%m %H:%M")
                 d["zamknal"] = st.session_state.user
                 dane["dyspozycje_historia"].append(dane["dyspozycje"].pop(i)); zapisz_dane(dane); st.rerun()
+            
+            # Przycisk w kolumnie 6 -> Czerwony
             if c[5].button("X", key=f"pdx_{i}"):
                 dane["dyspozycje"].pop(i); zapisz_dane(dane); st.rerun()
 with t_dys2:
