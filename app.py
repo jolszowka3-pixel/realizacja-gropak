@@ -10,23 +10,45 @@ st.set_page_config(page_title="GROPAK ERP", layout="wide")
 
 st.markdown("""
     <style>
-    .stButton>button { width: 100%; border-radius: 2px; height: 1.9em; line-height: 1; padding: 2px; font-size: 14px; }
-    .main .block-container { padding-top: 1.5rem; }
-    thead tr th { background-color: #f8f9fa !important; color: #333 !important; }
-    div[data-testid="stPopover"] > button { 
-        border: 1px solid #dcdcdc !important; 
-        background: white !important; 
-        text-align: left !important; 
-        color: #1f77b4 !important;
-    }
+    /* Ogólne style */
+    .stButton>button { width: 100%; border-radius: 4px; height: 2.2em; font-size: 13px; font-weight: 500; }
+    .main .block-container { padding-top: 2rem; }
+    
+    /* Nagłówki sekcji */
     .section-header {
-        background-color: #f0f2f6;
-        padding: 10px; border-radius: 5px; margin-bottom: 10px;
-        font-weight: bold; color: #1f77b4;
+        background-color: #f1f3f5;
+        padding: 12px 15px;
+        border-radius: 4px;
+        margin-bottom: 15px;
+        font-weight: 600;
+        color: #343a40;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        border-left: 4px solid #495057;
     }
-    .cal-day { font-weight: bold; color: #555; margin-bottom: 5px; border-bottom: 1px solid #eee; min-height: 25px; }
-    .cal-entry-out { font-size: 10px; background: #e1f5fe; color: #01579b; border-left: 3px solid #03a9f4; padding: 2px; margin-bottom: 2px; border-radius: 2px; line-height: 1.1; }
-    .cal-entry-in { font-size: 10px; background: #e8f5e9; color: #1b5e20; border-left: 3px solid #4caf50; padding: 2px; margin-bottom: 2px; border-radius: 2px; line-height: 1.1; }
+    
+    /* Kalendarz */
+    .cal-day { font-weight: 600; color: #adb5bd; margin-bottom: 8px; font-size: 14px; }
+    .cal-entry-out { 
+        font-size: 11px; background: #e9ecef; color: #495057; 
+        border-left: 3px solid #0056b3; padding: 3px 6px; 
+        margin-bottom: 3px; border-radius: 2px; font-weight: 500;
+    }
+    .cal-entry-in { 
+        font-size: 11px; background: #f8f9fa; color: #495057; 
+        border-left: 3px solid #28a745; padding: 3px 6px; 
+        margin-bottom: 3px; border-radius: 2px; font-weight: 500;
+    }
+    
+    /* Tabele i Popovery */
+    div[data-testid="stPopover"] > button { 
+        border: 1px solid #dee2e6 !important; 
+        background: transparent !important; 
+        text-align: left !important; 
+        color: #495057 !important;
+        font-size: 13px !important;
+    }
+    thead tr th { background-color: #f8f9fa !important; font-weight: 600 !important; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -39,7 +61,7 @@ def check_password():
         else:
             st.session_state["password_correct"] = False
     if "password_correct" not in st.session_state:
-        st.text_input("Logowanie GROPAK ERP", type="password", on_change=password_entered, key="password")
+        st.text_input("Logowanie do systemu", type="password", on_change=password_entered, key="password")
         return False
     return st.session_state.get("password_correct", False)
 
@@ -86,44 +108,44 @@ def zmien_miesiac(delta):
 
 # --- 5. PANEL BOCZNY ---
 with st.sidebar:
-    st.title("⚙️ OPERACJE")
+    st.title("OPERACJE")
     opcja = st.selectbox("Typ dokumentu", ["Zlecenie Produkcji", "Przyjęcie Towaru (PZ)"])
     st.divider()
     
     if opcja == "Zlecenie Produkcji":
         k_klient = st.text_input("Klient")
-        k_termin = st.text_input("Termin (np. 27.03)")
-        k_produkty = st.text_area("Produkty")
-        if st.button("Zatwierdź Zlecenie"):
+        k_termin = st.text_input("Planowany termin (np. 27.03)")
+        k_produkty = st.text_area("Specyfikacja produktów")
+        if st.button("Zapisz Zlecenie"):
             if k_klient:
                 dane["w_realizacji"].append({"klient": k_klient, "termin": k_termin, "opis": k_produkty, "data_p": datetime.now().strftime("%d.%m %H:%M"), "data_k": "-"})
                 zapisz_dane(dane); st.rerun()
     else:
         p_dostawca = st.text_input("Dostawca")
-        p_termin = st.text_input("Termin dostawy")
-        p_towar = st.text_area("Towar")
-        if st.button("Zatwierdź Przyjęcie"):
+        p_termin = st.text_input("Data dostawy")
+        p_towar = st.text_area("Szczegóły towaru")
+        if st.button("Zapisz Przyjęcie"):
             if p_dostawca and p_towar:
                 dane["przyjecia"].append({"dostawca": p_dostawca, "termin": p_termin, "towar": p_towar, "data_p": datetime.now().strftime("%d.%m %H:%M"), "data_k": "-"})
                 zapisz_dane(dane); st.rerun()
 
 # --- 6. WIDOK GŁÓWNY ---
-st.header("📊 System GROPAK Online")
+st.subheader("Panel Zarządzania GROPAK")
 st.write("---")
 
 # --- SEKCJA KALENDARZA ---
-st.markdown('<div class="section-header">📅 KALENDARZ PLANOWANYCH OPERACJI</div>', unsafe_allow_html=True)
+st.markdown('<div class="section-header">Harmonogram Planowanych Realizacji</div>', unsafe_allow_html=True)
 
-col_prev, col_title, col_next = st.columns([1, 3, 1])
-with col_prev:
-    if st.button("◀ Poprzedni", key="prev_btn"): zmien_miesiac(-1); st.rerun()
-with col_title:
+c_prev, c_title, c_next = st.columns([1, 4, 1])
+with c_prev:
+    if st.button("Poprzedni", key="p_btn"): zmien_miesiac(-1); st.rerun()
+with c_title:
     m_names = ["Styczeń", "Luty", "Marzec", "Kwiecień", "Maj", "Czerwiec", "Lipiec", "Sierpień", "Wrzesień", "Październik", "Listopad", "Grudzień"]
-    st.markdown(f"<h3 style='text-align: center;'>{m_names[st.session_state.cal_month-1]} {st.session_state.cal_year}</h3>", unsafe_allow_html=True)
-with col_next:
-    if st.button("Następny ▶", key="next_btn"): zmien_miesiac(1); st.rerun()
+    st.markdown(f"<h4 style='text-align: center; margin-top: 5px;'>{m_names[st.session_state.cal_month-1]} {st.session_state.cal_year}</h4>", unsafe_allow_html=True)
+with c_next:
+    if st.button("Następny", key="n_btn"): zmien_miesiac(1); st.rerun()
 
-# Logika mapowania zdarzeń
+# Mapowanie zdarzeń
 events_map = {}
 def parse_date(txt):
     try:
@@ -138,18 +160,18 @@ for z in dane["w_realizacji"]:
     d, m, y = parse_date(z.get('termin', ''))
     if d and m == st.session_state.cal_month and y == st.session_state.cal_year:
         if d not in events_map: events_map[d] = []
-        events_map[d].append(f'<div class="cal-entry-out">🚀 {z["klient"]}</div>')
+        events_map[d].append(f'<div class="cal-entry-out">WYDANIE: {z["klient"]}</div>')
 
 for p in dane["przyjecia"]:
     d, m, y = parse_date(p.get('termin', ''))
     if d and m == st.session_state.cal_month and y == st.session_state.cal_year:
         if d not in events_map: events_map[d] = []
-        events_map[d].append(f'<div class="cal-entry-in">📥 {p["dostawca"]}</div>')
+        events_map[d].append(f'<div class="cal-entry-in">DOSTAWA: {p["dostawca"]}</div>')
 
-# Rysowanie siatki
-dni_tyg = ["Pon", "Wt", "Śr", "Czw", "Pt", "Sob", "Ndz"]
+# Rysowanie siatki kalendarza
+dni_tyg = ["Poniedziałek", "Wtorek", "Środa", "Czwartek", "Piątek", "Sobota", "Niedziela"]
 h_cols = st.columns(7)
-for i, d_name in enumerate(dni_tyg): h_cols[i].markdown(f"<center><b>{d_name}</b></center>", unsafe_allow_html=True)
+for i, d_name in enumerate(dni_tyg): h_cols[i].markdown(f"<p style='text-align:center; font-size: 12px; color: #6c757d;'>{d_name}</p>", unsafe_allow_html=True)
 
 month_days = calendar.monthcalendar(st.session_state.cal_year, st.session_state.cal_month)
 for week in month_days:
@@ -163,63 +185,50 @@ for week in month_days:
 
 st.write("---")
 
-# --- SEKCJA A: PRODUKCJA ---
-st.markdown('<div class="section-header">📦 ZAMÓWIENIA I REALIZACJA PRODUKCJI</div>', unsafe_allow_html=True)
-t1, t2 = st.tabs(["🚀 Bieżąca Produkcja", "✅ Historia"])
+# --- SEKCJA PRODUKCJI ---
+st.markdown('<div class="section-header">Zlecenia w Realizacji</div>', unsafe_allow_html=True)
+t1, t2 = st.tabs(["Zlecenia Aktywne", "Archiwum Wydań"])
 
 with t1:
-    if not dane["w_realizacji"]: st.info("Brak zleceń.")
+    if not dane["w_realizacji"]: st.info("Brak aktywnych zleceń.")
     else:
-        st.columns([1.5, 1.2, 1.2, 4.5, 0.8, 0.8]) # Nagłówki wizualne
         for i, z in enumerate(dane["w_realizacji"]):
-            c = st.columns([1.5, 1.2, 1.2, 4.5, 0.8, 0.8])
+            c = st.columns([1.5, 1.2, 4.5, 1, 0.5])
             c[0].write(z['klient'])
-            c[1].write(f"📅 {z.get('termin', '-')}")
-            c[2].write(z['data_p'])
-            with c[3].popover(f"📋 {z['opis'][:50]}..."):
+            c[1].write(z.get('termin', '-'))
+            with c[2].popover(f"Szczegóły: {z['opis'][:40]}..."):
                 n_p = st.text_area("Produkty", value=z['opis'], key=f"pe_{i}")
                 n_t = st.text_input("Termin", value=z.get('termin', '-'), key=f"te_{i}")
-                if st.button("Zapisz", key=f"ps_{i}"):
+                if st.button("Zaktualizuj", key=f"ps_{i}"):
                     dane["w_realizacji"][i]['opis'], dane["w_realizacji"][i]['termin'] = n_p, n_t
                     zapisz_dane(dane); st.rerun()
-            if c[4].button("GOTOWE", key=f"pd_{i}"):
+            if c[3].button("ZAMKNIJ", key=f"pd_{i}"):
                 z["data_k"] = datetime.now().strftime("%d.%m %H:%M")
                 dane["zrealizowane"].append(dane["w_realizacji"].pop(i))
                 zapisz_dane(dane); st.rerun()
-            if c[5].button("❌", key=f"px_{i}"):
+            if c[4].button("USUŃ", key=f"px_{i}"):
                 dane["w_realizacji"].pop(i); zapisz_dane(dane); st.rerun()
 
-# --- SEKCJA B: LOGISTYKA ---
-st.markdown('<div class="section-header">📥 LOGISTYKA I PRZYJĘCIA TOWARU</div>', unsafe_allow_html=True)
-t3, t4 = st.tabs(["🚚 Zaplanowane", "✅ Historia"])
+# --- SEKCJA LOGISTYKI ---
+st.markdown('<div class="section-header">Logistyka i Dostawy</div>', unsafe_allow_html=True)
+t3, t4 = st.tabs(["Zaplanowane Przyjęcia", "Historia Przyjęć"])
 
 with t3:
-    if not dane["przyjecia"]: st.info("Brak dostaw.")
+    if not dane["przyjecia"]: st.info("Brak zaplanowanych dostaw.")
     else:
         for i, p in enumerate(dane["przyjecia"]):
-            c = st.columns([1.5, 1.2, 1.2, 4.5, 0.8, 0.8])
+            c = st.columns([1.5, 1.2, 4.5, 1, 0.5])
             c[0].write(p['dostawca'])
-            c[1].write(f"📅 {p.get('termin', '-')}")
-            c[2].write(p['data_p'])
-            with c[3].popover(f"🚚 {p['towar'][:50]}..."):
+            c[1].write(p.get('termin', '-'))
+            with c[2].popover(f"Szczegóły: {p['towar'][:40]}..."):
                 n_tw = st.text_area("Towar", value=p['towar'], key=f"pze_{i}")
                 n_pt = st.text_input("Termin", value=p.get('termin', '-'), key=f"pzt_{i}")
-                if st.button("Zapisz", key=f"pzs_{i}"):
+                if st.button("Zaktualizuj", key=f"pzs_{i}"):
                     dane["przyjecia"][i]['towar'], dane["przyjecia"][i]['termin'] = n_tw, n_pt
                     zapisz_dane(dane); st.rerun()
-            if c[4].button("✅", key=f"pzo_{i}"):
+            if c[3].button("ODEBRANO", key=f"pzo_{i}"):
                 p["data_k"] = datetime.now().strftime("%d.%m %H:%M")
                 dane["przyjecia_historia"].append(dane["przyjecia"].pop(i))
                 zapisz_dane(dane); st.rerun()
-            if c[5].button("❌", key=f"pzx_{i}"):
+            if c[4].button("USUŃ", key=f"pzx_{i}"):
                 dane["przyjecia"].pop(i); zapisz_dane(dane); st.rerun()
-
-# --- HISTORIE (Uproszczone) ---
-with t2:
-    if dane["zrealizowane"]:
-        df1 = pd.DataFrame([{"Klient": r.get("klient"), "Wydano": r.get("data_k"), "Produkty": r.get("opis")} for r in dane["zrealizowane"]])
-        st.dataframe(df1.iloc[::-1], use_container_width=True)
-with t4:
-    if dane["przyjecia_historia"]:
-        df2 = pd.DataFrame([{"Dostawca": r.get("dostawca"), "Odebrano": r.get("data_k"), "Towar": r.get("towar")} for r in dane["przyjecia_historia"]])
-        st.dataframe(df2.iloc[::-1], use_container_width=True)
