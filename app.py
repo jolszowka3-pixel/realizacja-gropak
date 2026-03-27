@@ -3,7 +3,6 @@ import json
 import os
 import pandas as pd
 from datetime import datetime
-from streamlit_calendar import calendar
 
 # --- 1. KONFIGURACJA ---
 st.set_page_config(page_title="GROPAK ERP", layout="wide")
@@ -26,6 +25,12 @@ st.markdown("""
         margin-bottom: 10px;
         font-weight: bold;
         color: #1f77b4;
+    }
+    .status-badge {
+        padding: 2px 5px;
+        border-radius: 3px;
+        font-size: 12px;
+        font-weight: bold;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -67,22 +72,6 @@ def zapisz_dane(dane):
 
 dane = wczytaj_dane()
 
-# --- FUNKCJA POMOCNICZA DLA DAT ---
-def formatuj_date_do_kalendarza(tekst_daty):
-    """Próbuje zamienić wpisany tekst na format ISO YYYY-MM-DD"""
-    teraz = datetime.now()
-    try:
-        # Próba formatu DD.MM.YYYY
-        dt = datetime.strptime(tekst_daty, "%d.%m.%Y")
-        return dt.strftime("%Y-%m-%d")
-    except:
-        try:
-            # Próba formatu DD.MM
-            dt = datetime.strptime(tekst_daty, "%d.%m")
-            return dt.replace(year=teraz.year).strftime("%Y-%m-%d")
-        except:
-            return None
-
 # --- 4. PANEL BOCZNY ---
 with st.sidebar:
     st.title("⚙️ OPERACJE")
@@ -116,40 +105,36 @@ with st.sidebar:
 st.header("📊 System GROPAK Online")
 st.write("---")
 
-# --- SEKCJA C: KALENDARZ (NA GÓRZE DLA WIDOCZNOŚCI) ---
-st.markdown('<div class="section-header">📅 HARMONOGRAM TERMINÓW</div>', unsafe_allow_html=True)
-events = []
+# --- SEKCJA C: HARMONOGRAM TERMINÓW ---
+st.markdown('<div class="section-header">📅 TERMINARZ PLANOWANYCH OPERACJI</div>', unsafe_allow_html=True)
 
-# Dodaj wydania do kalendarza
+# Zbieranie wszystkich planowanych rzeczy do jednej listy
+harmonogram = []
 for z in dane["w_realizacji"]:
-    data_iso = formatuj_date_do_kalendarza(z.get('termin', ''))
-    if data_iso:
-        events.append({
-            "title": f"🚀 WYDANIE: {z['klient']}",
-            "start": data_iso,
-            "end": data_iso,
-            "color": "#1f77b4", # Niebieski
-            "allDay": True
+    if z.get('termin') and z['termin'] != "-":
+        harmonogram.append({
+            "Data": z['termin'],
+            "Typ": "🚀 WYDANIE",
+            "Podmiot": z['klient'],
+            "Szczegóły": z['opis']
         })
-
-# Dodaj przyjęcia do kalendarza
 for p in dane["przyjecia"]:
-    data_iso = formatuj_date_do_kalendarza(p.get('termin', ''))
-    if data_iso:
-        events.append({
-            "title": f"📥 PRZYJĘCIE: {p['dostawca']}",
-            "start": data_iso,
-            "end": data_iso,
-            "color": "#28a745", # Zielony
-            "allDay": True
+    if p.get('termin') and p['termin'] != "-":
+        harmonogram.append({
+            "Data": p['termin'],
+            "Typ": "📥 PRZYJĘCIE",
+            "Podmiot": p['dostawca'],
+            "Szczegóły": p['towar']
         })
 
-calendar_options = {
-    "headerToolbar": {"left": "prev,next today", "center": "title", "right": "dayGridMonth,listWeek"},
-    "initialView": "dayGridMonth",
-    "locale": "pl"
-}
-calendar(events=events, options=calendar_options, key="erp_calendar")
+if not harmonogram:
+    st.info("Brak zaplanowanych operacji z przypisanym terminem.")
+else:
+    df_h = pd.DataFrame(harmonogram)
+    # Sortowanie po dacie (uproszczone tekstowe)
+    df_h = df_h.sort_values(by="Data")
+    st.table(df_h) # Używamy st.table dla lepszej czytelności harmonogramu
+
 st.write("")
 
 # --- SEKCJA A: PRODUKCJA I WYDANIA ---
@@ -161,7 +146,8 @@ with tab_prod:
         st.info("Brak aktywnych zleceń.")
     else:
         c_h = st.columns([1.5, 1.2, 1.2, 4.5, 0.8, 0.8])
-        c_h[0].write("**Klient**"); c_h[1].write("**Termin**"); c_h[2].write("**Dodano**"); c_h[3].write("**Produkty**")
+        c_h[0].write("**Klient**"); c_h[1].write("**Termin**"); c_h[2].write("**Dodano**"); c_h[3].write("**Produkty**"); c_h[4].write(""); c_h[5].write("")
+        st.divider()
         for i, z in enumerate(dane["w_realizacji"]):
             c = st.columns([1.5, 1.2, 1.2, 4.5, 0.8, 0.8])
             c[0].write(z['klient'])
@@ -183,7 +169,7 @@ with tab_prod:
 
 with tab_hist_prod:
     if dane["zrealizowane"]:
-        df_v = pd.DataFrame([{ "Klient": r.get("klient", "-"), "Termin": r.get("termin", "-"), "Wydano": r.get("data_k", "-"), "Produkty": r.get("opis", "-")} for r in dane["zrealizowane"]])
+        df_v = pd.DataFrame([{ "Klient": r.get("klient", "-"), "Termin": r.get("termin", "-"), "Dodano": r.get("data_p", "-"), "Wydano": r.get("data_k", "-"), "Produkty": r.get("opis", "-")} for r in dane["zrealizowane"]])
         st.dataframe(df_v.iloc[::-1], use_container_width=True)
 
 st.write("")
@@ -197,7 +183,8 @@ with tab_pz_plan:
         st.info("Brak zaplanowanych przyjęć.")
     else:
         c_h2 = st.columns([1.5, 1.2, 1.2, 4.5, 0.8, 0.8])
-        c_h2[0].write("**Dostawca**"); c_h2[1].write("**Termin**"); c_h2[2].write("**Dodano**"); c_h2[3].write("**Towar**")
+        c_h2[0].write("**Dostawca**"); c_h2[1].write("**Termin**"); c_h2[2].write("**Dodano**"); c_h2[3].write("**Towar**"); c_h2[4].write(""); c_h2[5].write("")
+        st.divider()
         for i, p in enumerate(dane["przyjecia"]):
             c = st.columns([1.5, 1.2, 1.2, 4.5, 0.8, 0.8])
             c[0].write(p['dostawca'])
@@ -219,5 +206,5 @@ with tab_pz_plan:
 
 with tab_pz_hist:
     if dane["przyjecia_historia"]:
-        df_pz_v = pd.DataFrame([{ "Dostawca": r.get("dostawca", "-"), "Termin": r.get("termin", "-"), "Odebrano": r.get("data_k", "-"), "Towar": r.get("towar", "-")} for r in dane["przyjecia_historia"]])
+        df_pz_v = pd.DataFrame([{ "Dostawca": r.get("dostawca", "-"), "Termin": r.get("termin", "-"), "Dodano": r.get("data_p", "-"), "Odebrano": r.get("data_k", "-"), "Towar": r.get("towar", "-")} for r in dane["przyjecia_historia"]])
         st.dataframe(df_pz_v.iloc[::-1], use_container_width=True)
