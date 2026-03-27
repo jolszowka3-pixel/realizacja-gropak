@@ -12,6 +12,8 @@ st.markdown("""
     .stButton>button { width: 100%; border-radius: 2px; height: 1.8em; line-height: 1; padding: 0; }
     .main .block-container { padding-top: 1.5rem; }
     thead tr th { background-color: #f0f2f6 !important; }
+    /* Styl dla pól edycyjnych w tabeli */
+    div[data-baseweb="input"] { background-color: transparent !important; border: 1px solid #e0e0e0 !important; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -39,7 +41,6 @@ def wczytaj_dane():
         try:
             with open(PLIK_DANYCH, "r", encoding="utf-8") as f:
                 d = json.load(f)
-                # Upewnienie się, że wszystkie klucze istnieją
                 if "w_realizacji" not in d: d["w_realizacji"] = []
                 if "zrealizowane" not in d: d["zrealizowane"] = []
                 if "przyjecia" not in d: d["przyjecia"] = []
@@ -69,7 +70,7 @@ with st.sidebar:
                 dane["w_realizacji"].append({
                     "klient": k_klient, "kontakt": k_kontakt, "opis": k_opis,
                     "data_p": datetime.now().strftime("%d.%m %H:%M"),
-                    "data_k": "-" # Miejsce na datę zakończenia
+                    "data_k": "-"
                 })
                 zapisz_dane(dane)
                 st.rerun()
@@ -89,16 +90,17 @@ with st.sidebar:
 # --- 5. WIDOK GŁÓWNY ---
 st.header("📊 System GROPAK Online")
 
-tab1, tab2, tab3 = st.tabs(["🚀 DO REALIZACJI", "✅ ZREALIZOWANE", "📥 PRZYJĘCIA (PZ)"])
+tab1, tab2, tab3 = st.tabs(["🚀 PRODUKCJA", "✅ HISTORIA WYDAŃ", "📥 PRZYJĘCIA (PZ)"])
 
 with tab1:
     if not dane["w_realizacji"]:
         st.info("Brak aktywnych zleceń.")
     else:
+        # Nagłówki tabeli
         col_h = st.columns([2, 2, 4, 2, 1, 1])
         col_h[0].write("**Klient**")
         col_h[1].write("**Data Przyjęcia**")
-        col_h[2].write("**Specyfikacja**")
+        col_h[2].write("**Specyfikacja (Edytowalna)**")
         col_h[3].write("**Kontakt**")
         col_h[4].write("**Akcja**")
         st.divider()
@@ -107,14 +109,31 @@ with tab1:
             c = st.columns([2, 2, 4, 2, 1, 1])
             c[0].write(z['klient'])
             c[1].write(z['data_p'])
-            c[2].write(z['opis'])
+            
+            # --- EDYTOWALNE POLE SPECYFIKACJI ---
+            nowy_opis = c[2].text_input(
+                "Edytuj opis", 
+                value=z['opis'], 
+                key=f"edit_{i}", 
+                label_visibility="collapsed"
+            )
+            
+            # Jeśli treść się zmieniła, zapisujemy do bazy
+            if nowy_opis != z['opis']:
+                dane["w_realizacji"][i]['opis'] = nowy_opis
+                zapisz_dane(dane)
+                st.rerun()
+            # ------------------------------------
+
             c[3].write(z['kontakt'])
+            
             if c[4].button("GOTOWE", key=f"z_{i}"):
                 z["data_k"] = datetime.now().strftime("%d.%m %H:%M")
                 item = dane["w_realizacji"].pop(i)
                 dane["zrealizowane"].append(item)
                 zapisz_dane(dane)
                 st.rerun()
+            
             if c[5].button("USUŃ", key=f"u_{i}"):
                 dane["w_realizacji"].pop(i)
                 zapisz_dane(dane)
@@ -124,18 +143,14 @@ with tab2:
     if not dane["zrealizowane"]:
         st.write("Historia jest pusta.")
     else:
-        # Tworzymy tabelę z danych historycznych
         df_z = pd.DataFrame(dane["zrealizowane"])
-        # Wybieramy tylko te kolumny, które chcemy pokazać (jeśli istnieją)
         pokaz = []
         for col in ["klient", "data_p", "data_k", "opis", "kontakt"]:
             if col in df_z.columns:
                 pokaz.append(col)
         
         df_wyswietl = df_z[pokaz].copy()
-        # Ładne nazwy dla tabeli
         df_wyswietl.columns = [c.replace('klient', 'Klient').replace('data_p', 'Przyjęto').replace('data_k', 'Wydano').replace('opis', 'Specyfikacja').replace('kontakt', 'Kontakt') for c in df_wyswietl.columns]
-        
         st.dataframe(df_wyswietl.iloc[::-1], use_container_width=True)
 
 with tab3:
@@ -144,7 +159,6 @@ with tab3:
     else:
         df_p = pd.DataFrame(dane["przyjecia"])
         st.dataframe(df_p.iloc[::-1], use_container_width=True)
-        
         if st.button("WYCZYŚĆ REJESTR PZ"):
             dane["przyjecia"] = []
             zapisz_dane(dane)
