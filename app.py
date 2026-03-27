@@ -18,6 +18,15 @@ st.markdown("""
         text-align: left !important; 
         color: #1f77b4 !important;
     }
+    /* Stylizacja nagłówków sekcji */
+    .section-header {
+        background-color: #f0f2f6;
+        padding: 10px;
+        border-radius: 5px;
+        margin-bottom: 10px;
+        font-weight: bold;
+        color: #1f77b4;
+    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -80,7 +89,6 @@ with st.sidebar:
     else:
         p_dostawca = st.text_input("Dostawca")
         p_towar = st.text_area("Towar")
-        # USUNIĘTO POLE ILOŚĆ Z PANELU BOCZNEGO
         if st.button("Zatwierdź Przyjęcie"):
             if p_dostawca and p_towar:
                 dane["przyjecia"].append({
@@ -93,13 +101,15 @@ with st.sidebar:
 
 # --- 5. WIDOK GŁÓWNY ---
 st.header("📊 System GROPAK Online")
+st.write("---")
 
-tab1, tab2, tab3 = st.tabs(["🚀 PRODUKCJA", "✅ HISTORIA WYDAŃ", "📥 PRZYJĘCIA (PZ)"])
+# --- SEKCJA A: ZAMÓWIENIA I REALIZACJA ---
+st.markdown('<div class="section-header">📦 ZAMÓWIENIA I REALIZACJA PRODUKCJI</div>', unsafe_allow_html=True)
+tab_prod, tab_hist = st.tabs(["🚀 Bieżąca Produkcja", "✅ Historia Wydań"])
 
-# --- TAB 1: PRODUKCJA ---
-with tab1:
+with tab_prod:
     if not dane["w_realizacji"]:
-        st.info("Brak aktywnych zleceń.")
+        st.info("Brak aktywnych zleceń produkcyjnych.")
     else:
         col_h = st.columns([2, 1.5, 5.5, 1, 1])
         col_h[0].write("**Klient**")
@@ -107,15 +117,14 @@ with tab1:
         col_h[2].write("**Produkty**")
         col_h[3].write("**Status**")
         col_h[4].write("")
-        st.divider()
-
+        
         for i, z in enumerate(dane["w_realizacji"]):
             c = st.columns([2, 1.5, 5.5, 1, 1])
             c[0].write(z['klient'])
             c[1].write(z['data_p'])
             
             prod_preview = (z['opis'][:65] + '...') if len(z['opis']) > 65 else z['opis']
-            with c[2].popover(f"📦 {prod_preview if prod_preview else 'Otwórz edycję'}"):
+            with c[2].popover(f"📋 {prod_preview if prod_preview else 'Edytuj'}"):
                 st.write("**Edytuj produkty:**")
                 nowe_produkty = st.text_area("Treść", value=z['opis'], key=f"prod_{i}", label_visibility="collapsed")
                 if st.button("Zapisz", key=f"save_{i}"):
@@ -135,10 +144,9 @@ with tab1:
                 zapisz_dane(dane)
                 st.rerun()
 
-# --- TAB 2: HISTORIA ---
-with tab2:
+with tab_hist:
     if not dane["zrealizowane"]:
-        st.write("Brak historii.")
+        st.write("Brak historii wydań.")
     else:
         df_z = pd.DataFrame(dane["zrealizowane"])
         istniejace = [col for col in ["klient", "data_p", "data_k", "opis"] if col in df_z.columns]
@@ -146,26 +154,30 @@ with tab2:
         df_wyswietl.columns = ["Klient", "Przyjęto", "Wydano", "Produkty"]
         st.dataframe(df_wyswietl.iloc[::-1], use_container_width=True)
 
-# --- TAB 3: PRZYJĘCIA (PZ) ---
-with tab3:
+st.write("")
+st.write("")
+
+# --- SEKCJA B: PLANOWANE PRZYJĘCIA ---
+st.markdown('<div class="section-header">📥 LOGISTYKA I PRZYJĘCIA TOWARU</div>', unsafe_allow_html=True)
+tab_pz = st.tabs(["🚚 Rejestr Przyjęć (PZ)"])
+
+with tab_pz[0]:
     if not dane["przyjecia"]:
-        st.info("Brak zarejestrowanych dostaw.")
+        st.info("Brak zarejestrowanych planowanych przyjęć.")
     else:
-        # Zmienione kolumny - usunięto Ilość
         col_pz = st.columns([2.5, 1.5, 6, 1])
         col_pz[0].write("**Dostawca**")
         col_pz[1].write("**Data**")
-        col_pz[2].write("**Towar**")
+        col_pz[2].write("**Towar / Uwagi**")
         col_pz[3].write("")
-        st.divider()
-
+        
         for i, p in enumerate(dane["przyjecia"]):
             c = st.columns([2.5, 1.5, 6, 1])
             c[0].write(p['dostawca'])
             c[1].write(p['data'])
             
             towar_preview = (p['towar'][:65] + '...') if len(p['towar']) > 65 else p['towar']
-            with c[2].popover(f"🚚 {towar_preview if towar_preview else 'Otwórz edycję'}"):
+            with c[2].popover(f"🚚 {towar_preview if towar_preview else 'Edytuj'}"):
                 st.write("**Edytuj szczegóły towaru:**")
                 nowy_towar = st.text_area("Treść PZ", value=p['towar'], key=f"pz_t_{i}", label_visibility="collapsed")
                 if st.button("Zapisz", key=f"pz_save_{i}"):
@@ -177,6 +189,12 @@ with tab3:
                 dane["przyjecia"].pop(i)
                 zapisz_dane(dane)
                 st.rerun()
+
+        st.divider()
+        if st.button("WYCZYŚĆ CAŁY REJESTR PZ", help="Usuwa wszystkie wpisy z planowanych przyjęć"):
+            dane["przyjecia"] = []
+            zapisz_dane(dane)
+            st.rerun()
 
         st.divider()
         if st.button("WYCZYŚĆ CAŁY REJESTR PZ"):
