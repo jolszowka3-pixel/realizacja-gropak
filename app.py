@@ -77,7 +77,7 @@ div[data-testid="stPopover"] > button { min-height: 32px !important; height: 32p
 </style>
 """, unsafe_allow_html=True)
 
-# --- 2. LOGIKA BAZY DANYCH ---
+# --- 2. LOGIKA BAZY DANYCH I SORTOWANIE ---
 PLIK_DANYCH = "baza_gropak_v3.json"
 OPCJE_TRANSPORTU = ["Brak", "Auto 1", "Auto 2", "Transport zewnętrzny", "Odbiór osobisty", "Kurier"]
 
@@ -213,8 +213,6 @@ for i in range(7):
     with cols[i]:
         st.markdown(f"<div class='day-header'><div class='day-name'>{['Pon','Wt','Śr','Czw','Pt','Sob','Nd'][i]}</div><div class='day-date'>{day.strftime('%d.%m')}</div></div>", unsafe_allow_html=True)
         dv, mv = day.day, day.month
-        
-        # Produkcja (Grupowana)
         grupy = {}
         for z in dane["w_realizacji"]:
             try:
@@ -234,22 +232,19 @@ for i in range(7):
                 tooltip = f"SPECYFIKACJA: {op_s}"
                 st.markdown(f"<div class='{st_cl}' title='{tooltip}'>{prefix}{it.get('klient')}</div>", unsafe_allow_html=True)
         
-        # Przyjęcia PZ (NOWE W KALENDARZU)
         for p in dane["przyjecia"]:
             try:
                 pd, pm = map(int, p.get('termin','').split('.')[:2])
                 if pd == dv and pm == mv:
-                    towar_s = str(p.get('towar','')).replace('"', '&quot;').replace('\n', ' ')
-                    st.markdown(f"<div class='cal-entry-in' title='{towar_s}'>P: {p.get('dostawca')}</div>", unsafe_allow_html=True)
+                    tow_s = str(p.get('towar','')).replace('"', '&quot;')
+                    st.markdown(f"<div class='cal-entry-in' title='{tow_s}'>P: {p.get('dostawca')}</div>", unsafe_allow_html=True)
             except: pass
-            
-        # Dyspozycje (NOWE W KALENDARZU)
         for d in dane["dyspozycje"]:
             try:
                 dd, dm = map(int, d.get('termin','').split('.')[:2])
                 if dd == dv and dm == mv:
-                    opis_s = str(d.get('opis','')).replace('"', '&quot;').replace('\n', ' ')
-                    st.markdown(f"<div class='cal-entry-task' title='{opis_s}'>D: {d.get('tytul')}</div>", unsafe_allow_html=True)
+                    op_s = str(d.get('opis','')).replace('"', '&quot;')
+                    st.markdown(f"<div class='cal-entry-task' title='{op_s}'>D: {d.get('tytul')}</div>", unsafe_allow_html=True)
             except: pass
 
 # --- 7. TABELE REALIZACJI ---
@@ -276,7 +271,6 @@ with t_prod:
                 b_st = '<span class="badge-status-ready">GOTOWE</span>' if status=='Gotowe' else '<span class="badge-status-prod">PRODUKCJA</span>'
                 c[0].markdown(f"**{z.get('klient')}** {'🔥' if z.get('pilne') else ''}<br>{b_st}", unsafe_allow_html=True)
                 c[1].write(z.get('termin')); c[2].write(z.get('data_p'))
-                
                 u_id = f"{z.get('data_p')}_{i}".replace(':','').replace(' ','_')
                 with c[3].popover("Menu"):
                     st.download_button("🖨️ Pobierz Kartę", generuj_html_do_druku(z), f"Karta_{u_id}.html", "text/html", key=f"dl_{u_id}")
@@ -287,7 +281,6 @@ with t_prod:
                     ns = st.text_area("Ilości", z.get('szczegoly',''), key=f"s_{u_id}")
                     if st.button("Zapisz", key=f"sv_{u_id}"):
                         dane["w_realizacji"][i].update({"termin":nt,"auto":na,"kurs":nk,"opis":no,"szczegoly":ns}); zapisz_dane(dane); st.rerun()
-                
                 if status != "Gotowe":
                     if c[4].button("ZROBIONE", key=f"done_{u_id}"): dane["w_realizacji"][i]['status']="Gotowe"; zapisz_dane(dane); st.rerun()
                 else:
@@ -296,23 +289,29 @@ with t_prod:
     with tp2: st.dataframe(dane["zrealizowane"][::-1], use_container_width=True)
 
 with t_log:
-    for i, p in enumerate(dane["przyjecia"]):
-        c = st.columns([1.6, 1.0, 1.0, 3.8, 1.1, 0.5])
-        c[0].write(f"**{p.get('dostawca')}**"); c[1].write(p.get('termin')); c[2].write(p.get('data_p'))
-        p_id = f"p_{i}_{p.get('data_p')}".replace(':','').replace(' ','_')
-        with c[3].popover("Edytuj"):
-            nt = st.text_input("Data", p.get('termin'), key=f"pt_{p_id}"); no = st.text_area("Towar", p.get('towar',''), key=f"po_{p_id}")
-            if st.button("Zapisz", key=f"ps_{p_id}"): dane["przyjecia"][i].update({"termin":nt,"towar":no}); zapisz_dane(dane); st.rerun()
-        if c[4].button("OK", key=f"pok_{p_id}"): dane["przyjecia_historia"].append(dane["przyjecia"].pop(i)); zapisz_dane(dane); st.rerun()
-        if c[5].button("X", key=f"px_{p_id}"): dane["przyjecia"].pop(i); zapisz_dane(dane); st.rerun()
+    tl1, tl2 = st.tabs(["Aktywne", "Historia"])
+    with tl1:
+        for i, p in enumerate(dane["przyjecia"]):
+            c = st.columns([1.6, 1.0, 1.0, 3.8, 1.1, 0.5])
+            c[0].write(f"**{p.get('dostawca')}**"); c[1].write(p.get('termin')); c[2].write(p.get('data_p'))
+            p_id = f"p_{i}_{p.get('data_p')}".replace(':','').replace(' ','_')
+            with c[3].popover("Edytuj"):
+                nt = st.text_input("Data", p.get('termin'), key=f"pt_{p_id}"); no = st.text_area("Towar", p.get('towar',''), key=f"po_{p_id}")
+                if st.button("Zapisz", key=f"ps_{p_id}"): dane["przyjecia"][i].update({"termin":nt,"towar":no}); zapisz_dane(dane); st.rerun()
+            if c[4].button("OK", key=f"pok_{p_id}"): dane["przyjecia_historia"].append(dane["przyjecia"].pop(i)); zapisz_dane(dane); st.rerun()
+            if c[5].button("X", key=f"px_{p_id}"): dane["przyjecia"].pop(i); zapisz_dane(dane); st.rerun()
+    with tl2: st.dataframe(dane["przyjecia_historia"][::-1], use_container_width=True)
 
 with t_dysp:
-    for i, d in enumerate(dane["dyspozycje"]):
-        c = st.columns([1.6, 1.0, 1.0, 3.8, 1.1, 0.5])
-        c[0].write(f"**{d.get('tytul')}**"); c[1].write(d.get('termin')); c[2].write(d.get('data_p'))
-        d_id = f"d_{i}_{d.get('data_p')}".replace(':','').replace(' ','_')
-        with c[3].popover("Edytuj"):
-            nt = st.text_input("Termin", d.get('termin'), key=f"dt_{d_id}"); no = st.text_area("Opis", d.get('opis',''), key=f"do_{d_id}")
-            if st.button("Zapisz", key=f"ds_{d_id}"): dane["dyspozycje"][i].update({"termin":nt,"opis":no}); zapisz_dane(dane); st.rerun()
-        if c[4].button("GOTOWE", key=f"dg_{d_id}"): dane["dyspozycje_historia"].append(dane["dyspozycje"].pop(i)); zapisz_dane(dane); st.rerun()
-        if c[5].button("X", key=f"dx_{d_id}"): dane["dyspozycje"].pop(i); zapisz_dane(dane); st.rerun()
+    td1, td2 = st.tabs(["W toku", "Historia"])
+    with td1:
+        for i, d in enumerate(dane["dyspozycje"]):
+            c = st.columns([1.6, 1.0, 1.0, 3.8, 1.1, 0.5])
+            c[0].write(f"**{d.get('tytul')}**"); c[1].write(d.get('termin')); c[2].write(d.get('data_p'))
+            d_id = f"d_{i}_{d.get('data_p')}".replace(':','').replace(' ','_')
+            with c[3].popover("Edytuj"):
+                nt = st.text_input("Termin", d.get('termin'), key=f"dt_{d_id}"); no = st.text_area("Opis", d.get('opis',''), key=f"do_{d_id}")
+                if st.button("Zapisz", key=f"ds_{d_id}"): dane["dyspozycje"][i].update({"termin":nt,"opis":no}); zapisz_dane(dane); st.rerun()
+            if c[4].button("GOTOWE", key=f"dg_{d_id}"): dane["dyspozycje_historia"].append(dane["dyspozycje"].pop(i)); zapisz_dane(dane); st.rerun()
+            if c[5].button("X", key=f"dx_{d_id}"): dane["dyspozycje"].pop(i); zapisz_dane(dane); st.rerun()
+    with td2: st.dataframe(dane["dyspozycje_historia"][::-1], use_container_width=True)
