@@ -166,11 +166,15 @@ with st.sidebar:
         with st.form("form_prod", clear_on_submit=True):
             kl = st.text_input("👤 Klient (Nazwa / Firma)")
             tm = st.text_input("📅 Termin (np. 31.03)")
-            op = st.text_area("📝 Specyfikacja szczegółowa")
+            op = st.text_area("📝 Specyfikacja ogólna")
+            sz = st.text_area("📦 Szczegółowe zamówienie (ilości, wymiary itp.)")
             p = st.checkbox("🔥 Oznacz jako PILNE")
             if st.form_submit_button("💾 Zapisz Zlecenie"):
                 if kl: 
-                    dane["w_realizacji"].append({"klient": kl, "termin": tm, "opis": op, "pilne": p, "data_p": datetime.now().strftime("%d.%m %H:%M"), "autor": st.session_state.user})
+                    dane["w_realizacji"].append({
+                        "klient": kl, "termin": tm, "opis": op, "szczegoly": sz, "pilne": p, 
+                        "data_p": datetime.now().strftime("%d.%m %H:%M"), "autor": st.session_state.user
+                    })
                     zapisz_dane(dane); st.rerun()
                     
     elif typ == "🚚 Dostawa (PZ)":
@@ -234,13 +238,18 @@ for i, date in enumerate(dates_in_week):
     
     d_val, m_val = date.day, date.month
     
-    # PRODUKCJA - Tooltipy
+    # PRODUKCJA - Tooltipy z nowym polem
     for z in dane["w_realizacji"]:
         zd, zm = parse_d(z.get('termin', ''))
         if zd == d_val and zm == m_val:
             p_mark = "🔥 " if z.get('pilne') else ""
             opis_safe = str(z.get('opis', 'Brak opisu')).replace('"', '&quot;')
-            tooltip = f"Specyfikacja: {opis_safe}&#10;Dodano: {z.get('data_p', '-')} ({z.get('autor', '-')})"
+            szczegoly_safe = str(z.get('szczegoly', '')).replace('"', '&quot;')
+            
+            tooltip = f"Specyfikacja: {opis_safe}&#10;"
+            if szczegoly_safe: tooltip += f"Szczegóły zam.: {szczegoly_safe}&#10;"
+            tooltip += f"Dodano: {z.get('data_p', '-')} ({z.get('autor', '-')})"
+            
             html_calendar += f'<div class="cal-entry-out" title="{tooltip}">{p_mark}W: {z.get("klient", "-")}</div>'
     
     # LOGISTYKA - Tooltipy
@@ -268,7 +277,7 @@ st.markdown(html_calendar, unsafe_allow_html=True)
 
 # --- 7. TABELE REALIZACJI ---
 st.markdown('<div class="section-header">Tabele Realizacji</div>', unsafe_allow_html=True)
-search = st.text_input("🔍 Wyszukaj (klient, dostawca, opis...)", "").lower()
+search = st.text_input("🔍 Wyszukaj (klient, wymiar, opis...)", "").lower()
 
 tab_prod, tab_log, tab_dysp = st.tabs(["🏭 Zlecenia Produkcyjne", "🚚 Przyjęcia Towaru (PZ)", "📋 Dyspozycje Dodatkowe"])
 
@@ -278,11 +287,13 @@ with tab_prod:
     with tp1:
         if not dane["w_realizacji"]: st.info("Brak aktywnych zleceń.")
         else:
-            st.markdown('<div style="display: flex; padding-left: 5px;"><div class="label-text" style="width: 16%;">Klient</div><div class="label-text" style="width: 13%;">Termin</div><div class="label-text" style="width: 13%;">Dodano</div><div class="label-text">Specyfikacja</div></div>', unsafe_allow_html=True)
+            st.markdown('<div style="display: flex; padding-left: 5px;"><div class="label-text" style="width: 16%;">Klient</div><div class="label-text" style="width: 13%;">Termin</div><div class="label-text" style="width: 13%;">Dodano</div><div class="label-text">Więcej informacji</div></div>', unsafe_allow_html=True)
             for i, z in enumerate(dane["w_realizacji"]):
                 klient = str(z.get('klient', 'Brak'))
                 opis = str(z.get('opis', ''))
-                if search and search not in klient.lower() and search not in opis.lower(): continue
+                szczegoly = str(z.get('szczegoly', ''))
+                
+                if search and search not in klient.lower() and search not in opis.lower() and search not in szczegoly.lower(): continue
                 
                 c = st.columns([1.5, 1.2, 1.2, 4.5, 0.8, 0.4])
                 b = '<span class="badge-urgent">PILNE</span>' if z.get('pilne') else ''
@@ -293,9 +304,14 @@ with tab_prod:
                 
                 c[2].write(f"{z.get('data_p', '-')} ({z.get('autor', 'brak')})")
                 
-                with c[3].popover("Szczegóły"):
-                    no = st.text_area("Edytuj", value=opis, key=f"z_o_{i}")
-                    if st.button("Zapisz", key=f"z_s_{i}"): dane["w_realizacji"][i]['opis'] = no; zapisz_dane(dane); st.rerun()
+                with c[3].popover("Pokaż / Edytuj szczegóły"):
+                    no = st.text_area("Specyfikacja ogólna", value=opis, key=f"z_o_{i}")
+                    nsz = st.text_area("Szczegóły zamówienia (ilości, itp.)", value=szczegoly, key=f"z_sz_{i}")
+                    if st.button("Zapisz", key=f"z_s_{i}"): 
+                        dane["w_realizacji"][i]['opis'] = no
+                        dane["w_realizacji"][i]['szczegoly'] = nsz
+                        zapisz_dane(dane)
+                        st.rerun()
                 
                 if c[4].button("GOTOWE", key=f"z_g_{i}"):
                     z["data_k"] = datetime.now().strftime("%d.%m %H:%M"); z["zamknal"] = st.session_state.user
