@@ -37,12 +37,37 @@ st.markdown("""
         font-weight: 700; color: #212529; text-transform: uppercase; border-left: 5px solid #2b3035; box-shadow: 0 1px 3px rgba(0,0,0,0.04);
     }
     
-    .cal-day-header { font-weight: 700; color: #495057; font-size: 13px; text-align: center; border-bottom: 2px solid #212529; margin-bottom: 10px; padding-bottom: 5px; }
-    .cal-day-sub { font-size: 11px; color: #adb5bd; display: block; text-align: center; }
+    /* NOWY KALENDARZ (SIATKA CSS) */
+    .week-grid {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 12px;
+        align-items: stretch; /* Wymusza równą wysokość wszystkich kafelków w wierszu */
+        margin-top: 15px;
+        margin-bottom: 25px;
+    }
+    .day-col {
+        background-color: #ffffff;
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        padding: 10px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+        display: flex;
+        flex-direction: column;
+        min-height: 120px;
+    }
+    .day-header {
+        text-align: center;
+        border-bottom: 2px solid #343a40;
+        margin-bottom: 12px;
+        padding-bottom: 6px;
+    }
+    .day-name { font-weight: 700; font-size: 13px; color: #495057; }
+    .day-date { font-size: 11px; color: #868e96; }
     
-    .cal-entry-out { font-size: 10px; background: #e7f5ff; color: #0056b3; border-left: 3px solid #0056b3; padding: 4px 6px; margin-bottom: 4px; border-radius: 4px; font-weight: 500; }
-    .cal-entry-in { font-size: 10px; background: #f3f9f1; color: #28a745; border-left: 3px solid #28a745; padding: 4px 6px; margin-bottom: 4px; border-radius: 4px; font-weight: 500; }
-    .cal-entry-task { font-size: 10px; background: #fff4e6; color: #d9480f; border-left: 3px solid #d9480f; padding: 4px 6px; margin-bottom: 4px; border-radius: 4px; font-weight: 500; }
+    .cal-entry-out { font-size: 10.5px; background: #e7f5ff; color: #0056b3; border-left: 3px solid #0056b3; padding: 5px 6px; margin-bottom: 5px; border-radius: 4px; font-weight: 600; line-height: 1.2;}
+    .cal-entry-in { font-size: 10.5px; background: #f3f9f1; color: #28a745; border-left: 3px solid #28a745; padding: 5px 6px; margin-bottom: 5px; border-radius: 4px; font-weight: 600; line-height: 1.2;}
+    .cal-entry-task { font-size: 10.5px; background: #fff4e6; color: #d9480f; border-left: 3px solid #d9480f; padding: 5px 6px; margin-bottom: 5px; border-radius: 4px; font-weight: 600; line-height: 1.2;}
     
     .badge-urgent { background-color: #dc3545; color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold; margin-left: 5px; }
     .label-text { font-size: 11px; color: #6c757d; font-weight: 700; text-transform: uppercase; margin-bottom: 5px; }
@@ -55,7 +80,6 @@ st.markdown("""
 PLIK_DANYCH = "baza_gropak_v3.json"
 
 def posortuj_dane(dane):
-    """Funkcja układająca zlecenia od najbliższej daty"""
     def sort_key(item):
         pilne = 0 if item.get('pilne') else 1 
         try:
@@ -103,7 +127,6 @@ if not st.session_state.user:
     st.subheader("GROPAK ERP - Logowanie")
     c1, _ = st.columns([1, 2])
     with c1:
-        # Formularz pozwala na zatwierdzenie logowania klawiszem Enter
         with st.form("login_form"):
             u = st.text_input("Użytkownik")
             p = st.text_input("Hasło", type="password")
@@ -164,7 +187,7 @@ c_s1.metric("📦 Aktywne Zlecenia", len(dane["w_realizacji"]))
 c_s2.metric("🚚 Oczekujące Dostawy", len(dane["przyjecia"]))
 c_s3.metric("📋 Dyspozycje w toku", len(dane["dyspozycje"]))
 
-# --- 6. TERMINARZ TYGODNIOWY ---
+# --- 6. TERMINARZ TYGODNIOWY (NOWY UKŁAD HTML GRID) ---
 st.markdown('<div class="section-header">Terminarz Tygodniowy</div>', unsafe_allow_html=True)
 if "week_offset" not in st.session_state: st.session_state.week_offset = 0
 
@@ -187,31 +210,39 @@ def parse_d(txt):
         return int(parts[0]), int(parts[1])
     except: return None, None
 
-week_cols = st.columns(7)
 day_names = ["Poniedziałek", "Wtorek", "Środa", "Czwartek", "Piątek", "Sobota", "Niedziela"]
 
+# Generowanie struktury HTML dla kalendarza
+html_calendar = '<div class="week-grid">'
 for i, date in enumerate(dates_in_week):
-    with week_cols[i]:
-        st.markdown(f"""<div class="cal-day-header">{day_names[i]}<br><span class="cal-day-sub">{date.strftime('%d.%m')}</span></div>""", unsafe_allow_html=True)
-        d_val, m_val = date.day, date.month
-        
-        for z in dane["w_realizacji"]:
-            zd, zm = parse_d(z.get('termin', ''))
-            if zd == d_val and zm == m_val:
-                p_mark = "🔥 " if z.get('pilne') else ""
-                st.markdown(f'<div class="cal-entry-out">{p_mark}W: {z.get("klient", "-")}</div>', unsafe_allow_html=True)
-        
-        for p in dane["przyjecia"]:
-            pd, pm = parse_d(p.get('termin', ''))
-            if pd == d_val and pm == m_val:
-                p_mark = "🔥 " if p.get('pilne') else ""
-                st.markdown(f'<div class="cal-entry-in">{p_mark}P: {p.get("dostawca", "-")}</div>', unsafe_allow_html=True)
-        
-        for ds in dane["dyspozycje"]:
-            dd, dm = parse_d(ds.get('termin', ''))
-            if dd == d_val and dm == m_val:
-                p_mark = "🔥 " if ds.get('pilne') else ""
-                st.markdown(f'<div class="cal-entry-task">{p_mark}D: {ds.get("tytul", "-")}</div>', unsafe_allow_html=True)
+    html_calendar += f'<div class="day-col">'
+    html_calendar += f'<div class="day-header"><div class="day-name">{day_names[i]}</div><div class="day-date">{date.strftime("%d.%m")}</div></div>'
+    
+    d_val, m_val = date.day, date.month
+    
+    for z in dane["w_realizacji"]:
+        zd, zm = parse_d(z.get('termin', ''))
+        if zd == d_val and zm == m_val:
+            p_mark = "🔥 " if z.get('pilne') else ""
+            html_calendar += f'<div class="cal-entry-out">{p_mark}W: {z.get("klient", "-")}</div>'
+    
+    for p in dane["przyjecia"]:
+        pd, pm = parse_d(p.get('termin', ''))
+        if pd == d_val and pm == m_val:
+            p_mark = "🔥 " if p.get('pilne') else ""
+            html_calendar += f'<div class="cal-entry-in">{p_mark}P: {p.get("dostawca", "-")}</div>'
+    
+    for ds in dane["dyspozycje"]:
+        dd, dm = parse_d(ds.get('termin', ''))
+        if dd == d_val and dm == m_val:
+            p_mark = "🔥 " if ds.get('pilne') else ""
+            html_calendar += f'<div class="cal-entry-task">{p_mark}D: {ds.get("tytul", "-")}</div>'
+            
+    html_calendar += '</div>' # Zamknięcie kolumny dnia
+html_calendar += '</div>' # Zamknięcie siatki
+
+# Wyświetlenie kalendarza
+st.markdown(html_calendar, unsafe_allow_html=True)
 
 # --- 7. TABELE REALIZACJI ---
 st.markdown('<div class="section-header">Tabele Realizacji</div>', unsafe_allow_html=True)
