@@ -55,7 +55,7 @@ div[data-testid="stPopover"] > button { min-height: 32px !important; height: 32p
     padding: 15px;
     border-radius: 4px;
     margin-bottom: 10px;
-    box-shadow: 2px 2px 5px rgba(0,0,0,0.1);
+    box-shadow: 2px 2px 5px rgba(0,0,0,0.05);
 }
 .note-meta {
     font-size: 10px;
@@ -146,7 +146,7 @@ def wczytaj_dane():
         "przyjecia": [], "przyjecia_historia": [], 
         "dyspozycje": [], "dyspozycje_historia": [], 
         "odbiory": [], "odbiory_historia": [],
-        "tablica": [], # NOWA SEKCA
+        "tablica": [],
         "uzytkownicy": {"admin": {"pass": "gropak2026", "role": "admin"}}
     }
     if os.path.exists(PLIK_DANYCH):
@@ -300,7 +300,7 @@ with st.sidebar:
 
     if can_edit:
         st.markdown('<div class="sidebar-header">➕ DODAJ NOWY WPIS</div>', unsafe_allow_html=True)
-        typ = st.selectbox("Rodzaj:", ["Produkcja", "Odbiór (Powrót)", "Dostawa (PZ)", "Dyspozycja", "Notatka na tablicę"])
+        typ = st.selectbox("Rodzaj:", ["Produkcja", "Odbiór (Powrót)", "Dostawa (PZ)", "Dyspozycja"])
         with st.form("f_add_new", clear_on_submit=True):
             if typ == "Produkcja":
                 kl = st.text_input("👤 Klient"); tm = st.text_input("📅 Termin"); sz = st.text_area("📦 Produkty"); auto = st.selectbox("Transport:", OPCJE_TRANSPORTU); kr = st.selectbox("Kurs:", [1,2,3,4,5]); p = st.checkbox("🔥 PILNE")
@@ -314,10 +314,6 @@ with st.sidebar:
                 ds = st.text_input("🏢 Dostawca"); tm = st.text_input("📅 Data"); op = st.text_area("📦 Co przyjeżdża?")
                 if st.form_submit_button("💾 Zapisz"):
                     if ds: dane["przyjecia"].append({"dostawca":ds,"termin":tm,"towar":op,"data_p":datetime.now().strftime("%d.%m %H:%M"),"autor":st.session_state.user}); zapisz_dane(dane); st.rerun()
-            elif typ == "Notatka na tablicę":
-                tresc = st.text_area("📝 Treść informacji")
-                if st.form_submit_button("💾 Opublikuj"):
-                    if tresc: dane["tablica"].append({"tresc": tresc, "data": datetime.now().strftime("%d.%m %H:%M"), "autor": st.session_state.user}); zapisz_dane(dane); st.rerun()
             else:
                 tyt = st.text_input("🎯 Tytuł"); tm = st.text_input("📅 Termin"); op = st.text_area("📝 Opis")
                 if st.form_submit_button("💾 Zapisz"):
@@ -390,24 +386,36 @@ for i in range(7):
                 if dd == dv and dm == mv: st.markdown(f"<div class='cal-entry-task' title='{d.get('opis')}'>D: {d.get('tytul')}</div>", unsafe_allow_html=True)
             except: pass
 
-# --- 7. TABELE REALIZACJI ---
+# --- 7. TABELE REALIZACJI I TABLICA ---
 st.markdown('<div class="section-header">Tabele Realizacji i Tablica</div>', unsafe_allow_html=True)
-search = st.text_input("🔍 Szukaj...", "").lower()
+search = st.text_input("🔍 Szukaj we wszystkich wpisach...", "").lower()
 t_tabl, t_prod, t_odb, t_log, t_dysp = st.tabs(["📌 Tablica Ogłoszeń", "🏭 Produkcja", "🔄 Odbiory (Powroty)", "🚚 Przyjęcia (PZ)", "📋 Dyspozycje"])
 
 with t_tabl:
-    if not dane["tablica"]: st.info("Brak nowych ogłoszeń na tablicy.")
+    if can_edit:
+        st.write("**Dodaj nową informację na tablicę:**")
+        with st.form("new_note_form", clear_on_submit=True):
+            nowa_tresc = st.text_area("Wpisz treść ogłoszenia...", placeholder="Np. Brama nr 2 naprawiona, proszę o porządek na hali...")
+            if st.form_submit_button("➕ Opublikuj na tablicy"):
+                if nowa_tresc:
+                    dane["tablica"].append({"tresc": nowa_tresc, "data": datetime.now().strftime("%d.%m %H:%M"), "autor": st.session_state.user})
+                    zapisz_dane(dane); st.rerun()
+        st.divider()
+
+    if not dane["tablica"]:
+        st.info("Tablica jest pusta. Dodaj pierwszą informację!")
     else:
         for i, note in enumerate(reversed(dane["tablica"])):
             real_idx = len(dane["tablica"]) - 1 - i
             st.markdown(f"""<div class="note-card">{note['tresc']}<div class="note-meta">Dodano: {note['data']} przez: {note['autor']}</div></div>""", unsafe_allow_html=True)
             if can_edit:
-                if st.button(f"Usuń notatkę", key=f"del_note_{real_idx}"):
+                if st.button(f"Usuń ogłoszenie", key=f"del_note_{real_idx}"):
                     dane["tablica"].pop(real_idx); zapisz_dane(dane); st.rerun()
 
 with t_prod:
     tp1, tp_planned, tp2 = st.tabs(["Aktywne", "📂 Do zaplanowania", "Historia"])
     z_aktywne = [z for z in dane["w_realizacji"] if str(z.get('termin','')).strip()]
+    z_do_zaplanowania = [z for z in dane["w_realizacji"] if not str(z.get('termin','')).strip()]
     with tp1:
         if not z_aktywne: st.info("Brak aktywnych zleceń.")
         else:
@@ -453,8 +461,7 @@ with t_odb:
         if not dane["odbiory"]: st.info("Brak aktywnych odbiorów.")
         else:
             hc = st.columns([2.0, 1.2, 5.0, 1.2, 0.6])
-            hc[0].markdown('<div class="label-text">Dostawca / Skąd</div>', unsafe_allow_html=True); hc[1].markdown('<div class="label-text">Termin</div>', unsafe_allow_html=True)
-            hc[2].markdown(f'<div class="label-text">{"Co odebrać?" if is_readonly else "Menu"}</div>', unsafe_allow_html=True)
+            hc[0].markdown('<div class="label-text">Dostawca / Skąd</div>', unsafe_allow_html=True); hc[1].markdown('<div class="label-text">Termin</div>', unsafe_allow_html=True); hc[2].markdown(f'<div class="label-text">{"Co odebrać?" if is_readonly else "Menu"}</div>', unsafe_allow_html=True)
             last_o = None
             for i, o in enumerate(dane["odbiory"]):
                 if search and search not in str(o).lower(): continue
@@ -466,7 +473,7 @@ with t_odb:
                 if is_readonly: c[2].markdown(f"<div class='readonly-text'>{o.get('towar','-')}</div>", unsafe_allow_html=True)
                 else:
                     with c[2].popover("Menu"):
-                        nt = st.text_input("Data", o.get('termin'), key=f"ot_{u_id}"); na = st.selectbox("Auto", OPCJE_TRANSPORTU, OPCJE_TRANSPORTU.index(o.get('auto','Brak')), key=f"oa_{u_id}"); nk = st.selectbox("Kurs", [1,2,3,4,5], int(o.get('kurs',1))-1, key=f"ok_{u_id}"); ntow = st.text_area("Co?", o.get('towar',''), key=f"ow_{u_id}")
+                        nt = st.text_input("Data", o.get('termin'), key=f"ot_{u_id}"); na = st.selectbox("Auto", OPCJE_TRANSPORTU, OPCJE_TRANSPORTU.index(o.get('auto','Brak')), key=f"oa_{u_id}"); nk = st.selectbox("Kurs", [1,2,3,4,5], int(o.get('kurs',1))-1, key=f"ok_{u_id}"); ntow = st.text_area("Co odebrać?", o.get('towar',''), key=f"ow_{u_id}")
                         if st.button("Zapisz", key=f"os_{u_id}"): dane["odbiory"][i].update({"termin":nt,"auto":na,"kurs":nk,"towar":ntow}); zapisz_dane(dane); st.rerun()
                     if c[3].button("GOTOWE", key=f"og_{u_id}"): dane["odbiory_historia"].append(dane["odbiory"].pop(i)); zapisz_dane(dane); st.rerun()
                     if c[4].button("X", key=f"ox_{u_id}"): dane["odbiory"].pop(i); zapisz_dane(dane); st.rerun()
@@ -478,8 +485,7 @@ with t_log:
         if not dane["przyjecia"]: st.info("Brak aktywnych dostaw.")
         else:
             hc = st.columns([2.0, 1.2, 5.0, 1.2, 0.6])
-            hc[0].markdown('<div class="label-text">Dostawca</div>', unsafe_allow_html=True); hc[1].markdown('<div class="label-text">Termin</div>', unsafe_allow_html=True)
-            hc[2].markdown(f'<div class="label-text">{"Zawartość dostawy" if is_readonly else "Menu"}</div>', unsafe_allow_html=True)
+            hc[0].markdown('<div class="label-text">Dostawca</div>', unsafe_allow_html=True); hc[1].markdown('<div class="label-text">Termin</div>', unsafe_allow_html=True); hc[2].markdown(f'<div class="label-text">{"Zawartość" if is_readonly else "Menu"}</div>', unsafe_allow_html=True)
             last_p = None
             for i, p in enumerate(dane["przyjecia"]):
                 if search and search not in str(p).lower(): continue
@@ -502,8 +508,7 @@ with t_dysp:
         if not dane["dyspozycje"]: st.info("Brak aktywnych zadań.")
         else:
             hc = st.columns([2.0, 1.2, 5.0, 1.2, 0.6])
-            hc[0].markdown('<div class="label-text">Tytuł zadania</div>', unsafe_allow_html=True); hc[1].markdown('<div class="label-text">Termin</div>', unsafe_allow_html=True)
-            hc[2].markdown(f'<div class="label-text">{"Opis zadania" if is_readonly else "Menu"}</div>', unsafe_allow_html=True)
+            hc[0].markdown('<div class="label-text">Tytuł zadania</div>', unsafe_allow_html=True); hc[1].markdown('<div class="label-text">Termin</div>', unsafe_allow_html=True); hc[2].markdown(f'<div class="label-text">{"Opis" if is_readonly else "Menu"}</div>', unsafe_allow_html=True)
             last_d = None
             for i, d in enumerate(dane["dyspozycje"]):
                 if search and search not in str(d).lower(): continue
