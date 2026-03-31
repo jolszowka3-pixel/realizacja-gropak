@@ -14,66 +14,94 @@ st.markdown("""
     .stButton>button { 
         width: 100%; 
         border-radius: 6px; 
-        height: 2.2em; 
+        min-height: 32px !important;
+        height: 32px !important; 
         font-size: 12px; 
-        font-weight: 700; 
-        transition: 0.2s;
-        border: 1px solid #dee2e6;
+        font-weight: 600; 
+        transition: all 0.2s ease-in-out;
+        border: 1px solid #ced4da;
+        padding: 0 10px;
+        line-height: 1;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.05);
     }
 
-    /* ZIELONE: GOTOWE / OK (Wyszukiwanie po tekście wewnątrz przycisku) */
+    /* ZIELONE: GOTOWE / OK (Pełny kolor) */
     button:has(div p:contains("GOTOWE")), 
     button:has(div p:contains("OK")),
     button:contains("GOTOWE"),
     button:contains("OK") {
-        border: 2px solid #28a745 !important;
-        color: #28a745 !important;
-        background-color: #f8fff9 !important;
+        border: none !important;
+        color: white !important;
+        background-color: #28a745 !important;
     }
     button:has(div p:contains("GOTOWE")):hover, 
-    button:has(div p:contains("OK")):hover {
-        background-color: #28a745 !important;
-        color: white !important;
+    button:has(div p:contains("OK")):hover,
+    button:contains("GOTOWE"):hover,
+    button:contains("OK"):hover {
+        background-color: #218838 !important;
+        box-shadow: 0 2px 5px rgba(40, 167, 69, 0.4);
+        transform: translateY(-1px);
     }
 
-    /* CZERWONE: X (Usuwanie) */
+    /* CZERWONE: X (Usuwanie - pełny kolor) */
     button:has(div p:contains("X")),
     button:contains("X") {
-        border: 2px solid #dc3545 !important;
-        color: #dc3545 !important;
-        background-color: #fff9f9 !important;
-    }
-    button:has(div p:contains("X")):hover {
-        background-color: #dc3545 !important;
+        border: none !important;
         color: white !important;
+        background-color: #dc3545 !important;
+        padding: 0 !important;
+    }
+    button:has(div p:contains("X")):hover,
+    button:contains("X"):hover {
+        background-color: #c82333 !important;
+        box-shadow: 0 2px 5px rgba(220, 53, 69, 0.4);
+        transform: translateY(-1px);
     }
 
-    /* Wyśrodkowanie elementów w wierszach tabeli */
+    /* Wyśrodkowanie elementów w wierszach tabeli i redukcja luzów */
     div[data-testid="stHorizontalBlock"] {
-        align-items: center;
-        padding: 5px 0;
+        align-items: center !important;
+        padding: 4px 0;
+    }
+
+    /* Unifikacja wysokości inputów, żeby idealnie pasowały do przycisków */
+    .stTextInput input { 
+        min-height: 32px !important;
+        height: 32px !important; 
+        font-size: 12px !important; 
+        border-radius: 6px !important;
+    }
+    
+    /* Popover (przycisk rozwijający) też musi trzymać wymiar */
+    div[data-testid="stPopover"] > button { 
+        min-height: 32px !important;
+        height: 32px !important;
+        border: 1px solid #ced4da !important; 
+        background: white !important; 
+        text-align: left !important; 
+        color: #495057 !important; 
     }
 
     .main .block-container { padding-top: 2rem; }
     .section-header {
         background-color: #f8f9fa;
         padding: 12px 15px;
-        border-radius: 4px;
-        margin-bottom: 10px;
+        border-radius: 6px;
+        margin-bottom: 12px;
         margin-top: 25px;
         font-weight: 700;
         color: #212529;
         text-transform: uppercase;
-        border-left: 5px solid #212529;
+        border-left: 5px solid #2b3035;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.04);
     }
+    
     .cal-day { font-weight: 700; color: #212529; margin-bottom: 8px; font-size: 14px; border-bottom: 1px solid #dee2e6; }
     .cal-entry-out { font-size: 10px; background: #e7f5ff; color: #0056b3; border-left: 3px solid #0056b3; padding: 2px 5px; margin-bottom: 2px; border-radius: 2px; }
     .cal-entry-in { font-size: 10px; background: #f3f9f1; color: #28a745; border-left: 3px solid #28a745; padding: 2px 5px; margin-bottom: 2px; border-radius: 2px; }
     .cal-entry-task { font-size: 10px; background: #fff4e6; color: #d9480f; border-left: 3px solid #d9480f; padding: 2px 5px; margin-bottom: 2px; border-radius: 2px; }
     
-    div[data-testid="stPopover"] > button { border: 1px solid #dee2e6 !important; background: white !important; text-align: left !important; color: #495057 !important; }
     .label-text { font-size: 11px; color: #6c757d; font-weight: 700; text-transform: uppercase; margin-bottom: 5px; }
-    .stTextInput input { height: 2.2em !important; font-size: 12px !important; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -235,7 +263,7 @@ with tp1:
             c[0].write(f"**{z['klient']}**")
             nt = c[1].text_input("T", value=z['termin'], key=f"z_t_{i}", label_visibility="collapsed")
             if nt != z['termin']: dane["w_realizacji"][i]['termin'] = nt; zapisz_dane(dane); st.rerun()
-            c[2].write(f"{z['data_p']} ({z['autor']})")
+            c[2].write(f"{z['data_p']} ({z.get('autor', 'brak')})")
             with c[3].popover("Szczegóły"):
                 no = st.text_area("Edytuj opis", value=z['opis'], key=f"z_o_{i}")
                 if st.button("Zapisz", key=f"z_s_{i}"): dane["w_realizacji"][i]['opis'] = no; zapisz_dane(dane); st.rerun()
@@ -257,7 +285,7 @@ with tl1:
             c[0].write(f"**{p['dostawca']}**")
             nt = c[1].text_input("T", value=p['termin'], key=f"l_t_{i}", label_visibility="collapsed")
             if nt != p['termin']: dane["przyjecia"][i]['termin'] = nt; zapisz_dane(dane); st.rerun()
-            c[2].write(f"{p['data_p']} ({p['autor']})")
+            c[2].write(f"{p['data_p']} ({p.get('autor', 'brak')})")
             with c[3].popover("Co w dostawie?"):
                 no = st.text_area("Edytuj", value=p['towar'], key=f"l_o_{i}")
                 if st.button("Zapisz", key=f"l_s_{i}"): dane["przyjecia"][i]['towar'] = no; zapisz_dane(dane); st.rerun()
@@ -279,7 +307,7 @@ with td1:
             c[0].write(f"**{d['tytul']}**")
             nt = c[1].text_input("T", value=d['termin'], key=f"d_t_{i}", label_visibility="collapsed")
             if nt != d['termin']: dane["dyspozycje"][i]['termin'] = nt; zapisz_dane(dane); st.rerun()
-            c[2].write(f"{d['data_p']} ({d['autor']})")
+            c[2].write(f"{d['data_p']} ({d.get('autor', 'brak')})")
             with c[3].popover("Szczegóły"):
                 no = st.text_area("Edytuj zadanie", value=d['opis'], key=f"d_o_{i}")
                 if st.button("Zapisz", key=f"d_s_{i}"): dane["dyspozycje"][i]['opis'] = no; zapisz_dane(dane); st.rerun()
