@@ -141,9 +141,8 @@ dane = wczytaj_dane()
 def generuj_html_do_druku(z):
     pilne_html = '<div style="color:red; border:4px solid red; padding:10px; text-align:center; font-size:24px; font-weight:bold;">🔥 ZLECENIE PILNE 🔥</div>' if z.get('pilne') else ''
     auto_val = z.get('auto', 'Brak'); k_val = z.get('kurs', 1); transport_str = f"{auto_val} / Kurs nr {k_val}" if auto_val in ["Auto 1", "Auto 2"] else auto_val
-    return f"""<!DOCTYPE html><html lang="pl"><head><meta charset="UTF-8"><style>body{{font-family:sans-serif;padding:30px;}} .card{{border:5px solid black;padding:30px;}} h1{{text-align:center;border-bottom:3px solid black;}} .row{{display:flex;justify-content:space-between;margin-top:20px;font-size:20px;}} .box{{border:1px solid #666;padding:15px;margin-top:20px;min-height:150px;font-size:18px;white-space:pre-wrap;}}</style></head><body onload="window.print()"><div class="card">{pilne_html}<h1>Karta Zlecenia: {z.get('klient')}</h1><div class="row"><div><b>Termin:</b> {z.get('termin')}</div><div><b>Transport:</b> {transport_str}</div></div><p><b>Specyfikacja Ogólna:</b></p><div class="box">{z.get('opis')}</div><p><b>Ilości / Szczegóły:</b></p><div class="box">{z.get('szczegoly')}</div><div style="margin-top:50px;text-align:right;">Podpis: __________________________</div></div></body></html>"""
+    return f"""<!DOCTYPE html><html lang="pl"><head><meta charset="UTF-8"><style>body{{font-family:sans-serif;padding:30px;}} .card{{border:5px solid black;padding:30px;}} h1{{text-align:center;border-bottom:3px solid black;}} .row{{display:flex;justify-content:space-between;margin-top:20px;font-size:20px;}} .box{{border:1px solid #666;padding:15px;margin-top:20px;min-height:250px;font-size:20px;white-space:pre-wrap;}}</style></head><body onload="window.print()"><div class="card">{pilne_html}<h1>Karta Zlecenia: {z.get('klient')}</h1><div class="row"><div><b>Termin:</b> {z.get('termin')}</div><div><b>Transport:</b> {transport_str}</div></div><p><b>PRODUKTY / SZCZEGÓŁY ZAMÓWIENIA:</b></p><div class="box">{z.get('szczegoly')}</div><div style="margin-top:50px;text-align:right;">Podpis: __________________________</div></div></body></html>"""
 
-# --- FUNKCJA: ROZPISKA ZBIORCZA (POPRAWIONA CZYTELNOŚĆ) ---
 def generuj_rozpiske_zbiorcza(data_cel, lista_zlecen):
     html = f"""<!DOCTYPE html><html lang="pl"><head><meta charset="UTF-8"><style>
     body{{font-family:sans-serif;padding:20px;color:#212529;}}
@@ -155,14 +154,7 @@ def generuj_rozpiske_zbiorcza(data_cel, lista_zlecen):
     th{{background:#e9ecef; font-weight:bold;}}
     .pilne{{color:#dc3545;font-weight:900;}}
     .check{{width:40px;text-align:center;font-weight:bold;font-size:20px;}}
-    /* KLUCZOWA POPRAWKA DLA CZYTELNOŚCI LIST */
-    .details-cell {{ 
-        white-space: pre-wrap; 
-        font-family: inherit; 
-        font-size: 15px; 
-        line-height: 1.4;
-        background-color: #fff;
-    }}
+    .details-cell {{ white-space: pre-wrap; font-family: inherit; font-size: 15px; line-height: 1.4; background-color: #fff; }}
     </style></head><body onload="window.print()">
     <div class="h1"><h1>PLAN TRANSPORTU - {data_cel}</h1></div>"""
     
@@ -179,23 +171,23 @@ def generuj_rozpiske_zbiorcza(data_cel, lista_zlecen):
         for (tr, kr), items in grupy.items():
             label = f"{tr} / KURS NR {kr}" if tr in ["Auto 1", "Auto 2"] else tr
             html += f"""<div class="transport-block"><div class="transport-title">🚚 {label}</div>
-            <table><tr><th class="check">OK</th><th style="width:20%">KLIENT</th><th style="width:25%">SPECYFIKACJA</th><th style="width:45%">ILOŚCI / SZCZEGÓŁY</th><th>STATUS</th></tr>"""
+            <table><tr><th class="check">OK</th><th style="width:25%">KLIENT</th><th style="width:60%">PRODUKTY / ILOŚCI</th><th>STATUS</th></tr>"""
             for it in items:
                 p_m = '<span class="pilne">[🔥 PILNE]</span> ' if it.get('pilne') else ''
                 st_m = "✅ GOTOWE" if it.get('status') == "Gotowe" else "⏳ PROD."
-                html += f"<tr><td class='check'>[ ]</td><td>{p_m}<b>{it.get('klient')}</b></td><td class='details-cell'>{it.get('opis','-')}</td><td class='details-cell'>{it.get('szczegoly','-')}</td><td>{st_m}</td></tr>"
+                html += f"<tr><td class='check'>[ ]</td><td>{p_m}<b>{it.get('klient')}</b></td><td class='details-cell'>{it.get('szczegoly','-')}</td><td>{st_m}</td></tr>"
             html += "</table></div>"
     html += "</body></html>"
     return html
 
 if "print_order" not in st.session_state: st.session_state.print_order = None
 
-# --- WIDOK DRUKOWANIA ---
+# --- WIDOK DRUKOWANIA (Karta) ---
 if st.session_state.print_order is not None:
     z = st.session_state.print_order
     st.markdown('<style>[data-testid="stSidebar"] {display: none;} header {display: none;}</style>', unsafe_allow_html=True)
     if st.button("⬅️ Wróć do systemu"): st.session_state.print_order = None; st.rerun()
-    st.markdown(f"<div style='border:4px solid black;padding:40px;background:white;'><h1>Zlecenie: {z.get('klient')}</h1><p>{z.get('opis')}</p></div>", unsafe_allow_html=True)
+    st.markdown(f"<div style='border:4px solid black;padding:40px;background:white;'><h1>Zlecenie: {z.get('klient')}</h1><p>{z.get('szczegoly')}</p></div>", unsafe_allow_html=True)
     st.stop()
 
 # --- 3. SYSTEM LOGOWANIA ---
@@ -238,10 +230,15 @@ with st.sidebar:
     typ = st.selectbox("Rodzaj:", ["Produkcja", "Dostawa (PZ)", "Dyspozycja"])
     with st.form("f_add_entry", clear_on_submit=True):
         if typ == "Produkcja":
-            kl = st.text_input("👤 Klient"); tm = st.text_input("📅 Termin (np. 31.03)"); op = st.text_area("📝 Specyfikacja"); sz = st.text_area("📦 Ilości"); auto = st.selectbox("Transport:", OPCJE_TRANSPORTU); kurs = st.selectbox("Kurs nr:", [1, 2, 3, 4, 5]); p = st.checkbox("🔥 PILNE")
+            kl = st.text_input("👤 Klient")
+            tm = st.text_input("📅 Termin (puste = do zaplanowania)")
+            sz = st.text_area("📦 Produkty (ilości, wymiary)") # JEDNO POLE ZAMIAST DWÓCH
+            auto = st.selectbox("Transport:", OPCJE_TRANSPORTU)
+            kr = st.selectbox("Kurs:", [1,2,3,4,5])
+            p = st.checkbox("🔥 PILNE")
             if st.form_submit_button("💾 Zapisz"):
                 if kl: 
-                    dane["w_realizacji"].append({"klient":kl,"termin":tm,"opis":op,"szczegoly":sz,"auto":auto,"kurs":kurs,"pilne":p,"status":"W produkcji","data_p":datetime.now().strftime("%d.%m %H:%M"),"autor":st.session_state.user})
+                    dane["w_realizacji"].append({"klient":kl,"termin":tm,"opis":"","szczegoly":sz,"auto":auto,"kurs":kr,"pilne":p,"status":"W produkcji","data_p":datetime.now().strftime("%d.%m %H:%M"),"autor":st.session_state.user})
                     zapisz_dane(dane); st.rerun()
         elif typ == "Dostawa (PZ)":
             ds = st.text_input("🏢 Dostawca"); tm = st.text_input("📅 Data"); op = st.text_area("📦 Zawartość")
@@ -294,7 +291,7 @@ for i in range(7):
             for it in items:
                 st_cl = "cal-entry-ready" if it.get('status')=="Gotowe" else "cal-entry-out"
                 prefix = "✅ " if it.get('status')=="Gotowe" else ""
-                tooltip = f"SPEC: {str(it.get('opis','')).replace('\"', '&quot;')}"
+                tooltip = f"PRODUKTY: {str(it.get('szczegoly','')).replace('\"', '&quot;')}"
                 st.markdown(f"<div class='{st_cl}' title='{tooltip}'>{prefix}{it.get('klient')}</div>", unsafe_allow_html=True)
         
         for p in dane["przyjecia"]:
@@ -316,16 +313,11 @@ for i in range(7):
 st.markdown('<div class="section-header">Centrum Rozpiski Transportu</div>', unsafe_allow_html=True)
 c_r1, c_r2 = st.columns([1, 2])
 with c_r1:
-    data_do_druku = st.text_input("Podaj datę do rozpiski (np. 31.03)", value=datetime.now().strftime("%d.%m"))
+    data_do_druku = st.text_input("Podaj datę (np. 31.03)", value=datetime.now().strftime("%d.%m"))
 with c_r2:
     st.markdown("<br>", unsafe_allow_html=True)
-    if st.download_button(
-        label="🖨️ Pobierz ZBIORCZĄ ROZPISKĘ na ten dzień", 
-        data=generuj_rozpiske_zbiorcza(data_do_druku, dane["w_realizacji"]), 
-        file_name=f"Rozpiska_{data_do_druku}.html", 
-        mime="text/html"
-    ):
-        st.success("Rozpiska gotowa!")
+    if st.download_button(label="🖨️ Pobierz ZBIORCZĄ ROZPISKĘ", data=generuj_rozpiske_zbiorcza(data_do_druku, dane["w_realizacji"]), file_name=f"Rozpiska_{data_do_druku}.html", mime="text/html"):
+        st.success("Gotowe!")
 
 # --- 8. TABELE REALIZACJI ---
 st.markdown('<div class="section-header">Tabele Realizacji</div>', unsafe_allow_html=True)
@@ -355,9 +347,13 @@ with t_prod:
                 u_id = f"{z.get('data_p')}_{i}".replace(':','').replace(' ','_')
                 with c[2].popover("Opcje"):
                     st.download_button("🖨️ Karta", generuj_html_do_druku(z), f"Karta_{u_id}.html", "text/html", key=f"dl_{u_id}")
-                    nt = st.text_input("Data", z.get('termin'), key=f"et_{u_id}"); na = st.selectbox("Auto", OPCJE_TRANSPORTU, OPCJE_TRANSPORTU.index(z.get('auto','Brak')), key=f"ea_{u_id}"); nk = st.selectbox("Kurs", [1,2,3,4,5], int(z.get('kurs',1))-1, key=f"k_{u_id}"); no = st.text_area("Specyfikacja", z.get('opis',''), key=f"o_{u_id}"); ns = st.text_area("Ilości", z.get('szczegoly',''), key=f"s_{u_id}")
+                    nt = st.text_input("Data", z.get('termin'), key=f"et_{u_id}")
+                    na = st.selectbox("Auto", OPCJE_TRANSPORTU, OPCJE_TRANSPORTU.index(z.get('auto','Brak')), key=f"ea_{u_id}")
+                    nk = st.selectbox("Kurs", [1,2,3,4,5], int(z.get('kurs',1))-1, key=f"ek_{u_id}")
+                    ns = st.text_area("Produkty", z.get('szczegoly',''), key=f"es_{u_id}")
                     if st.button("Zapisz", key=f"sv_{u_id}"):
-                        dane["w_realizacji"][i].update({"termin":nt,"auto":na,"kurs":nk,"opis":no,"szczegoly":ns}); zapisz_dane(dane); st.rerun()
+                        dane["w_realizacji"][i].update({"termin":nt,"auto":na,"kurs":nk,"szczegoly":ns})
+                        zapisz_dane(dane); st.rerun()
                 if status != "Gotowe":
                     if c[3].button("ZROBIONE", key=f"done_{u_id}"): dane["w_realizacji"][i]['status']="Gotowe"; zapisz_dane(dane); st.rerun()
                 else:
@@ -375,11 +371,14 @@ with t_prod:
                 c = st.columns([2.0, 1.2, 5.0, 1.2, 0.6])
                 c[0].markdown(f"**{z.get('klient')}** {'🔥' if z.get('pilne') else ''}<br><span style='color:red;'>BRAK DATY</span>", unsafe_allow_html=True); c[1].write("---")
                 u_id = f"plan_{z.get('data_p')}_{i}".replace(':','').replace(' ','_')
-                with c[2].popover("Zaplanuj / Edytuj"):
+                with c[2].popover("Zaplanuj"):
                     st.download_button("🖨️ Karta", generuj_html_do_druku(z), f"Karta_{u_id}.html", "text/html", key=f"dlp_{u_id}")
-                    nt = st.text_input("Wpisz datę (np. 01.04)", "", key=f"etp_{u_id}"); na = st.selectbox("Auto", OPCJE_TRANSPORTU, key=f"eap_{u_id}"); nk = st.selectbox("Kurs", [1,2,3,4,5], key=f"ekp_{u_id}"); no = st.text_area("Specyfikacja", z.get('opis',''), key=f"op_{u_id}"); ns = st.text_area("Ilości", z.get('szczegoly',''), key=f"sp_{u_id}")
+                    nt = st.text_input("Data (np. 01.04)", "", key=f"etp_{u_id}")
+                    na = st.selectbox("Auto", OPCJE_TRANSPORTU, key=f"eap_{u_id}")
+                    nk = st.selectbox("Kurs", [1,2,3,4,5], key=f"ekp_{u_id}")
+                    ns = st.text_area("Produkty", z.get('szczegoly',''), key=f"sp_{u_id}")
                     if st.button("Zapisz i zaplanuj", key=f"svp_{u_id}"):
-                        dane["w_realizacji"][i].update({"termin":nt,"auto":na,"kurs":nk,"opis":no,"szczegoly":ns}); zapisz_dane(dane); st.rerun()
+                        dane["w_realizacji"][i].update({"termin":nt,"auto":na,"kurs":nk,"szczegoly":ns}); zapisz_dane(dane); st.rerun()
                 if c[3].button("ZROBIONE", key=f"donep_{u_id}"): dane["w_realizacji"][i]['status']="Gotowe"; zapisz_dane(dane); st.rerun()
                 if c[4].button("X", key=f"xp_{u_id}"): dane["w_realizacji"].pop(i); zapisz_dane(dane); st.rerun()
 
@@ -399,7 +398,7 @@ with t_log:
                     st.markdown(f"<div class='table-group-header'>📅 {p.get('termin')} | Dostawy towarów</div>", unsafe_allow_html=True); last_l = p.get('termin')
                 c = st.columns([2.0, 1.2, 5.0, 1.2, 0.6]); c[0].write(f"**{p.get('dostawca')}**"); c[1].write(p.get('termin'))
                 p_id = f"p_{i}_{p.get('data_p')}".replace(':','').replace(' ','_')
-                with c[2].popover("Menu"):
+                with c[2].popover("Edytuj"):
                     nt = st.text_input("Data", p.get('termin'), key=f"pt_{p_id}"); no = st.text_area("Towar", p.get('towar',''), key=f"po_{p_id}")
                     if st.button("Zapisz", key=f"ps_{p_id}"): dane["przyjecia"][i].update({"termin":nt,"towar":no}); zapisz_dane(dane); st.rerun()
                 if c[3].button("OK", key=f"pok_{p_id}"): dane["przyjecia_historia"].append(dane["przyjecia"].pop(i)); zapisz_dane(dane); st.rerun()
