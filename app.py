@@ -43,6 +43,7 @@ div[data-testid="stPopover"] > button { min-height: 32px !important; height: 32p
 .main .block-container { padding-top: 2rem; }
 .section-header { background-color: #f8f9fa; padding: 12px 15px; border-radius: 6px; margin-bottom: 12px; margin-top: 25px; font-weight: 700; color: #212529; text-transform: uppercase; border-left: 5px solid #2b3035; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
 .sidebar-header { background: linear-gradient(90deg, #1e7e34, #28a745); color: white; padding: 12px; border-radius: 6px; text-align: center; font-weight: 700; font-size: 14px; margin-bottom: 15px; letter-spacing: 1px; }
+.sidebar-print-header { background: #343a40; color: white; padding: 10px; border-radius: 6px; text-align: center; font-weight: 700; font-size: 13px; margin-top: 20px; margin-bottom: 10px; }
 
 /* --- "ZABETONOWANY" UKŁAD KALENDARZA --- */
 [data-testid="stHorizontalBlock"]:has(> div:nth-child(7)):not(:has(> div:nth-child(8))) {
@@ -251,6 +252,16 @@ with st.sidebar:
             if st.form_submit_button("💾 Zapisz"):
                 if tyt: dane["dyspozycje"].append({"tytul":tyt,"termin":tm,"opis":op,"data_p":datetime.now().strftime("%d.%m %H:%M"),"autor":st.session_state.user}); zapisz_dane(dane); st.rerun()
 
+    # --- CENTRUM ROZPISKI TRANSPORTU W SIDEBARZE ---
+    st.markdown('<div class="sidebar-print-header">🖨️ DRUKOWANIE PLANU DNIA</div>', unsafe_allow_html=True)
+    data_do_druku = st.text_input("Data do rozpiski:", value=datetime.now().strftime("%d.%m"))
+    st.download_button(
+        label="📥 Pobierz Rozpiskę (Plan)", 
+        data=generuj_rozpiske_zbiorcza(data_do_druku, dane["w_realizacji"], dane["odbiory"]), 
+        file_name=f"Rozpiska_{data_do_druku}.html", 
+        mime="text/html"
+    )
+
     if st.session_state.user == "admin":
         st.divider()
         if st.button("🔥 RESETUJ WSZYSTKIE DANE"):
@@ -317,17 +328,7 @@ for i in range(7):
                 if dd == dv and dm == mv: st.markdown(f"<div class='cal-entry-task' title='{d.get('opis')}'>D: {d.get('tytul')}</div>", unsafe_allow_html=True)
             except: pass
 
-# --- 7. CENTRUM ROZPISKI TRANSPORTU ---
-st.markdown('<div class="section-header">Centrum Rozpiski Transportu</div>', unsafe_allow_html=True)
-c_r1, c_r2 = st.columns([1, 2])
-with c_r1:
-    data_do_druku = st.text_input("Podaj datę (np. 31.03)", value=datetime.now().strftime("%d.%m"))
-with c_r2:
-    st.markdown("<br>", unsafe_allow_html=True)
-    if st.download_button(label="🖨️ Pobierz ZBIORCZĄ ROZPISKĘ", data=generuj_rozpiske_zbiorcza(data_do_druku, dane["w_realizacji"], dane["odbiory"]), file_name=f"Rozpiska_{data_do_druku}.html", mime="text/html"):
-        st.success("Gotowe!")
-
-# --- 8. TABELE REALIZACJI (UJEDNOLICONE) ---
+# --- 7. TABELE REALIZACJI (UJEDNOLICONE) ---
 st.markdown('<div class="section-header">Tabele Realizacji</div>', unsafe_allow_html=True)
 search = st.text_input("🔍 Szukaj we wszystkich wpisach...", "").lower()
 t_prod, t_odb, t_log, t_dysp = st.tabs(["🏭 Produkcja", "🔄 Odbiory (Powroty)", "🚚 Przyjęcia (PZ)", "📋 Dyspozycje"])
