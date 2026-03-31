@@ -7,11 +7,6 @@ from datetime import datetime, timedelta
 # --- 1. KONFIGURACJA I STYLIZACJA ---
 st.set_page_config(page_title="GROPAK ERP", layout="wide")
 
-# Inicjalizacja stanów sesji
-if "search_query" not in st.session_state: st.session_state.search_query = ""
-if "wo" not in st.session_state: st.session_state.wo = 0
-if "print_order" not in st.session_state: st.session_state.print_order = None
-
 st.markdown("""
 <style>
 /* Wspólne ustawienia przycisków */
@@ -66,14 +61,14 @@ div[data-testid="stPopover"] > button { min-height: 32px !important; height: 32p
 
 .day-col { 
     background-color: #ffffff; border: 1px solid #dee2e6; border-radius: 8px; padding: 8px; 
-    min-height: 250px; width: 100%; display: flex; flex-direction: column; gap: 4px; box-sizing: border-box;
+    min-height: 300px; width: 100%; display: flex; flex-direction: column; gap: 4px; box-sizing: border-box;
 }
 .day-header { text-align: center; border-bottom: 2px solid #343a40; margin-bottom: 8px; padding-bottom: 4px; }
 .day-name { font-weight: 700; font-size: 12px; color: #495057; text-transform: uppercase; }
 .day-date { font-size: 11px; color: #868e96; }
 
 .cal-entry-out, .cal-entry-ready, .cal-entry-in, .cal-entry-task, .cal-entry-return { 
-    font-size: 10px; padding: 3px 5px; margin-bottom: 1px; border-radius: 3px; font-weight: 600; 
+    font-size: 10px; padding: 4px 6px; margin-bottom: 2px; border-radius: 3px; font-weight: 600; 
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block;
 }
 .cal-entry-out { background: #e7f5ff; color: #0056b3; border-left: 3px solid #0056b3; }
@@ -81,17 +76,6 @@ div[data-testid="stPopover"] > button { min-height: 32px !important; height: 32p
 .cal-entry-return { background: #f3e5f5; color: #7b1fa2; border: 1px solid #7b1fa2; }
 .cal-entry-in { background: #f3f9f1; color: #28a745; border-left: 3px solid #28a745; }
 .cal-entry-task { background: #fff4e6; color: #d9480f; border-left: 3px solid #d9480f; }
-
-/* Styl dla przycisku lupy w kalendarzu */
-.stButton>button[key^="focus_"] {
-    padding: 0 !important;
-    min-height: 18px !important;
-    height: 18px !important;
-    font-size: 10px !important;
-    background: transparent !important;
-    border: none !important;
-    color: #6c757d !important;
-}
 
 .table-group-header { background-color: #e9ecef; color: #212529; padding: 6px 12px; font-weight: 700; font-size: 12px; border-radius: 4px; margin: 15px 0 8px 0; border-left: 4px solid #007bff; }
 .badge-status-prod { background-color: #ffc107; color: #212529; padding: 2px 5px; border-radius: 4px; font-size: 9px; font-weight: bold; margin-left: 5px; display: inline-block;}
@@ -129,10 +113,8 @@ def posortuj_dane(dane):
 
 def wczytaj_dane():
     default_dane = {
-        "w_realizacji": [], "zrealizowane": [], 
-        "przyjecia": [], "przyjecia_historia": [], 
-        "dyspozycje": [], "dyspozycje_historia": [], 
-        "odbiory": [], "odbiory_historia": [],
+        "w_realizacji": [], "zrealizowane": [], "przyjecia": [], "przyjecia_historia": [], 
+        "dyspozycje": [], "dyspozycje_historia": [], "odbiory": [], "odbiory_historia": [],
         "uzytkownicy": {"admin": "gropak2026"}
     }
     if os.path.exists(PLIK_DANYCH):
@@ -185,7 +167,7 @@ def generuj_rozpiske_zbiorcza(data_cel, lista_zlecen, lista_odbiorow):
         grupy[key]["odb"].append(o)
         
     if not grupy:
-        html += f"<h2 style='text-align:center;'>Brak zadań na dzień {data_cel}.</h2>"
+        html += "<h2 style='text-align:center;'>Brak zadań na ten dzień.</h2>"
     else:
         for (tr, kr), content in grupy.items():
             label = f"{tr} / KURS NR {kr}" if tr in ["Auto 1", "Auto 2"] else tr
@@ -200,6 +182,8 @@ def generuj_rozpiske_zbiorcza(data_cel, lista_zlecen, lista_odbiorow):
             html += "</table></div>"
     html += "</body></html>"
     return html
+
+if "print_order" not in st.session_state: st.session_state.print_order = None
 
 # --- WIDOK DRUKOWANIA ---
 if st.session_state.print_order is not None:
@@ -235,7 +219,7 @@ with st.sidebar:
     st.divider()
 
     if st.session_state.user == "admin":
-        with st.expander("👥 Użytkownicy"):
+        with st.expander("👥 Zarządzanie użytkownikami"):
             with st.form("add_u_f", clear_on_submit=True):
                 new_u = st.text_input("Login"); new_p = st.text_input("Hasło")
                 if st.form_submit_button("Dodaj"):
@@ -262,7 +246,6 @@ with st.sidebar:
                         dane["odbiory"].append(dane["odbiory_historia"].pop(i)); zapisz_dane(dane); st.rerun()
                     if c2.button("❌ Usuń", key=f"fdel_o_{i}"):
                         dane["odbiory_historia"].pop(i); zapisz_dane(dane); st.rerun()
-            # ... (analogicznie dla Przyjęć i Dyspozycji)
         st.divider()
 
     st.markdown('<div class="sidebar-header">➕ DODAJ NOWY WPIS</div>', unsafe_allow_html=True)
@@ -287,7 +270,7 @@ with st.sidebar:
 
     st.markdown('<div class="sidebar-print-header">🖨️ DRUKOWANIE PLANU DNIA</div>', unsafe_allow_html=True)
     data_do_druku = st.text_input("Data do rozpiski:", value=datetime.now().strftime("%d.%m"))
-    st.download_button(label="📥 Pobierz Rozpiskę", data=generuj_rozpiske_zbiorcza(data_do_druku, dane["w_realizacji"], dane["odbiory"]), file_name=f"Rozpiska_{data_do_druku}.html", mime="text/html")
+    st.download_button(label="📥 Pobierz Rozpiskę (Plan)", data=generuj_rozpiske_zbiorcza(data_do_druku, dane["w_realizacji"], dane["odbiory"]), file_name=f"Rozpiska_{data_do_druku}.html", mime="text/html")
 
     if st.session_state.user == "admin":
         st.divider()
@@ -302,6 +285,7 @@ c_s1.metric("📦 Zlecenia", len(dane["w_realizacji"])); c_s2.metric("🔄 Odbio
 
 # --- 6. TERMINARZ TYGODNIOWY ---
 st.markdown('<div class="section-header">Terminarz Tygodniowy</div>', unsafe_allow_html=True)
+if "wo" not in st.session_state: st.session_state.wo = 0
 cn1, _, cn3 = st.columns([1,4,1])
 if cn1.button("← Poprzedni"): st.session_state.wo -= 7; st.rerun()
 if cn3.button("Następny →"): st.session_state.wo += 7; st.rerun()
@@ -309,9 +293,8 @@ start = datetime.now() - timedelta(days=datetime.now().weekday()) + timedelta(da
 cols = st.columns(7)
 for i in range(7):
     day = start + timedelta(days=i)
-    d_str = day.strftime('%d.%m')
     with cols[i]:
-        st.markdown(f"<div class='day-header'><div class='day-name'>{['Pon','Wt','Śr','Czw','Pt','Sob','Nd'][i]}</div><div class='day-date'>{d_str}</div></div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='day-header'><div class='day-name'>{['Pon','Wt','Śr','Czw','Pt','Sob','Nd'][i]}</div><div class='day-date'>{day.strftime('%d.%m')}</div></div>", unsafe_allow_html=True)
         dv, mv = day.day, day.month
         
         grupy_transp = {}
@@ -336,121 +319,127 @@ for i in range(7):
             all_ready = all(it.get('status') == 'Gotowe' for it in content["prod"])
             css_cl = "cal-entry-ready" if (all_ready and content["prod"]) else "cal-entry-out"
             label = f"{tr} / K{kr}" if tr in ["Auto 1", "Auto 2"] else (f"{tr}" if tr != "Brak" else "Inne")
-            
-            # Pasek transportu + Przycisk fokusu (Lupa)
-            col_label, col_focus = st.columns([4, 1])
-            with col_label:
-                st.markdown(f"<div class='{css_cl}'>{label} ({len(content['prod'])+len(content['odb'])})</div>", unsafe_allow_html=True)
-            with col_focus:
-                if st.button("🔍", key=f"focus_{d_str}_{tr}_{kr}"):
-                    st.session_state.search_query = f"{d_str} {tr}"
-                    st.rerun()
+            tooltip = "ZLECENIA:&#10;"
+            for it in content["prod"]: tooltip += f"• {it.get('klient')} ({it.get('szczegoly','')[:30]}...)&#10;"
+            if content["odb"]:
+                tooltip += "&#10;🔄 ODBIORY:&#10;"
+                for it in content["odb"]: tooltip += f"• {it.get('miejsce')} ({it.get('towar','')[:30]}...)&#10;"
+            st.markdown(f"<div class='{css_cl}' title='{tooltip}'>{label} ({len(content['prod'])+len(content['odb'])})</div>", unsafe_allow_html=True)
+            if content["odb"]: st.markdown(f"<div class='cal-entry-return' style='height:3px; margin-top:-4px;'></div>", unsafe_allow_html=True)
 
         for p in dane["przyjecia"]:
             try:
                 parts = p.get('termin','').split('.'); pd, pm = int(parts[0]), int(parts[1])
-                if pd == dv and pm == mv: st.markdown(f"<div class='cal-entry-in'>P: {p.get('dostawca')}</div>", unsafe_allow_html=True)
+                if pd == dv and pm == mv: st.markdown(f"<div class='cal-entry-in' title='{p.get('towar')}'>P: {p.get('dostawca')}</div>", unsafe_allow_html=True)
             except: pass
         for d in dane["dyspozycje"]:
             try:
                 parts = d.get('termin','').split('.'); dd, dm = int(parts[0]), int(parts[1])
-                if dd == dv and dm == mv: st.markdown(f"<div class='cal-entry-task'>D: {d.get('tytul')}</div>", unsafe_allow_html=True)
+                if dd == dv and dm == mv: st.markdown(f"<div class='cal-entry-task' title='{d.get('opis')}'>D: {d.get('tytul')}</div>", unsafe_allow_html=True)
             except: pass
 
-# --- 7. TABELE REALIZACJI ---
+# --- 7. TABELE REALIZACJI (UJEDNOLICONE) ---
 st.markdown('<div class="section-header">Tabele Realizacji</div>', unsafe_allow_html=True)
-c_f1, c_f2 = st.columns([4, 1])
-with c_f1:
-    search = st.text_input("🔍 Szukaj...", value=st.session_state.search_query).lower()
-with c_f2:
-    st.markdown("<br>", unsafe_allow_html=True)
-    if st.button("❌ Wyczyść filtr"):
-        st.session_state.search_query = ""
-        st.rerun()
-
+search = st.text_input("🔍 Szukaj we wszystkich wpisach...", "").lower()
 t_prod, t_odb, t_log, t_dysp = st.tabs(["🏭 Produkcja", "🔄 Odbiory (Powroty)", "🚚 Przyjęcia (PZ)", "📋 Dyspozycje"])
 
 with t_prod:
     tp1, tp_planned, tp2 = st.tabs(["Aktywne", "📂 Do zaplanowania", "Historia"])
     z_aktywne = [z for z in dane["w_realizacji"] if str(z.get('termin','')).strip()]
+    z_do_zaplanowania = [z for z in dane["w_realizacji"] if not str(z.get('termin','')).strip()]
     with tp1:
-        hc = st.columns([2.0, 1.2, 5.0, 1.2, 0.6])
-        hc[0].markdown('<div class="label-text">Klient</div>', unsafe_allow_html=True); hc[1].markdown('<div class="label-text">Termin</div>', unsafe_allow_html=True); hc[2].markdown('<div class="label-text">Menu</div>', unsafe_allow_html=True); hc[3].markdown('<div class="label-text">Status</div>', unsafe_allow_html=True)
-        last_g = None
-        for i, z in enumerate(dane["w_realizacji"]):
-            if not str(z.get('termin','')).strip(): continue
-            if search and search not in str(z).lower(): continue
-            curr_g = (z.get('termin'), z.get('auto'), z.get('kurs'))
-            if curr_g != last_g: st.markdown(f"<div class='table-group-header'>📅 {z.get('termin')} | {z.get('auto')} (K{z.get('kurs')})</div>", unsafe_allow_html=True); last_g = curr_g
-            c = st.columns([2.0, 1.2, 5.0, 1.2, 0.6]); status = z.get('status','W produkcji'); b_st = '<span class="badge-status-ready">✅ GOTOWE</span>' if status=='Gotowe' else '<span class="badge-status-prod">⏳ PRODUKCJA</span>'
-            c[0].markdown(f"**{z.get('klient')}** {'🔥' if z.get('pilne') else ''}<br>{b_st}", unsafe_allow_html=True); c[1].write(z.get('termin'))
-            u_id = f"z_{z.get('data_p')}_{i}".replace(':','').replace(' ','_')
-            with c[2].popover("Opcje"):
-                st.download_button("🖨️ Karta", generuj_html_do_druku(z), f"K_prod_{u_id}.html", "text/html", key=f"dl_{u_id}")
-                nt = st.text_input("Data", z.get('termin'), key=f"et_{u_id}"); na = st.selectbox("Auto", OPCJE_TRANSPORTU, OPCJE_TRANSPORTU.index(z.get('auto','Brak')), key=f"ea_{u_id}"); nk = st.selectbox("Kurs", [1,2,3,4,5], int(z.get('kurs',1))-1, key=f"k_{u_id}"); ns = st.text_area("Produkty", z.get('szczegoly',''), key=f"s_{u_id}")
-                if st.button("Zapisz", key=f"sv_{u_id}"): dane["w_realizacji"][i].update({"termin":nt,"auto":na,"kurs":nk,"szczegoly":ns}); zapisz_dane(dane); st.rerun()
-            if status != "Gotowe":
-                if c[3].button("ZROBIONE", key=f"done_{u_id}"): dane["w_realizacji"][i]['status']="Gotowe"; zapisz_dane(dane); st.rerun()
-            else:
-                if c[3].button("WYŚLIJ", key=f"send_{u_id}"): dane["zrealizowane"].append(dane["w_realizacji"].pop(i)); zapisz_dane(dane); st.rerun()
-            if c[4].button("X", key=f"x_{u_id}"): dane["w_realizacji"].pop(i); zapisz_dane(dane); st.rerun()
+        if not z_aktywne: st.info("Brak aktywnych zleceń.")
+        else:
+            hc = st.columns([2.0, 1.2, 5.0, 1.2, 0.6])
+            hc[0].markdown('<div class="label-text">Klient</div>', unsafe_allow_html=True); hc[1].markdown('<div class="label-text">Termin</div>', unsafe_allow_html=True); hc[2].markdown('<div class="label-text">Menu</div>', unsafe_allow_html=True); hc[3].markdown('<div class="label-text">Status</div>', unsafe_allow_html=True)
+            last_g = None
+            for i, z in enumerate(dane["w_realizacji"]):
+                if not str(z.get('termin','')).strip(): continue
+                if search and search not in str(z).lower(): continue
+                curr_g = (z.get('termin'), z.get('auto'), z.get('kurs'))
+                if curr_g != last_g: st.markdown(f"<div class='table-group-header'>📅 {z.get('termin')} | {z.get('auto')} (K{z.get('kurs')})</div>", unsafe_allow_html=True); last_g = curr_g
+                c = st.columns([2.0, 1.2, 5.0, 1.2, 0.6]); status = z.get('status','W produkcji'); b_st = '<span class="badge-status-ready">✅ GOTOWE</span>' if status=='Gotowe' else '<span class="badge-status-prod">⏳ PRODUKCJA</span>'
+                c[0].markdown(f"**{z.get('klient')}** {'🔥' if z.get('pilne') else ''}<br>{b_st}", unsafe_allow_html=True); c[1].write(z.get('termin'))
+                u_id = f"z_{z.get('data_p')}_{i}".replace(':','').replace(' ','_')
+                with c[2].popover("Opcje"):
+                    st.download_button("🖨️ Karta", generuj_html_do_druku(z), f"Karta_{u_id}.html", "text/html", key=f"dl_{u_id}")
+                    nt = st.text_input("Data", z.get('termin'), key=f"et_{u_id}"); na = st.selectbox("Auto", OPCJE_TRANSPORTU, OPCJE_TRANSPORTU.index(z.get('auto','Brak')), key=f"ea_{u_id}"); nk = st.selectbox("Kurs", [1,2,3,4,5], int(z.get('kurs',1))-1, key=f"k_{u_id}"); ns = st.text_area("Produkty", z.get('szczegoly',''), key=f"s_{u_id}")
+                    if st.button("Zapisz", key=f"sv_{u_id}"): dane["w_realizacji"][i].update({"termin":nt,"auto":na,"kurs":nk,"szczegoly":ns}); zapisz_dane(dane); st.rerun()
+                if status != "Gotowe":
+                    if c[3].button("ZROBIONE", key=f"done_{u_id}"): dane["w_realizacji"][i]['status']="Gotowe"; zapisz_dane(dane); st.rerun()
+                else:
+                    if c[3].button("WYŚLIJ", key=f"send_{u_id}"): dane["zrealizowane"].append(dane["w_realizacji"].pop(i)); zapisz_dane(dane); st.rerun()
+                if c[4].button("X", key=f"x_{u_id}"): dane["w_realizacji"].pop(i); zapisz_dane(dane); st.rerun()
     with tp_planned:
         for i, z in enumerate(dane["w_realizacji"]):
             if str(z.get('termin','')).strip(): continue
-            c = st.columns([2.0, 1.2, 5.0, 1.2, 0.6]); c[0].markdown(f"**{z.get('klient')}**"); u_id = f"pl_{z.get('data_p')}_{i}"
+            c = st.columns([2.0, 1.2, 5.0, 1.2, 0.6]); c[0].markdown(f"**{z.get('klient')}**<br><span style='color:red;'>BRAK DATY</span>", unsafe_allow_html=True); u_id = f"plan_{z.get('data_p')}_{i}".replace(':','').replace(' ','_')
             with c[2].popover("Zaplanuj"):
                 nt = st.text_input("Data", "", key=f"etp_{u_id}"); na = st.selectbox("Auto", OPCJE_TRANSPORTU, key=f"eap_{u_id}"); nk = st.selectbox("Kurs", [1,2,3,4,5], key=f"ekp_{u_id}"); ns = st.text_area("Produkty", z.get('szczegoly',''), key=f"sp_{u_id}")
                 if st.button("Zapisz", key=f"svp_{u_id}"): dane["w_realizacji"][i].update({"termin":nt,"auto":na,"kurs":nk,"szczegoly":ns}); zapisz_dane(dane); st.rerun()
+            if c[4].button("X", key=f"xp_{u_id}"): dane["w_realizacji"].pop(i); zapisz_dane(dane); st.rerun()
     with tp2: st.dataframe(dane["zrealizowane"][::-1], use_container_width=True)
 
 with t_odb:
     to1, to2 = st.tabs(["Aktywne", "Historia"])
     with to1:
-        hc = st.columns([2.0, 1.2, 5.0, 1.2, 0.6]); hc[0].write("**Dostawca / Skąd**"); hc[1].write("**Termin**")
-        last_o = None
-        for i, o in enumerate(dane["odbiory"]):
-            if search and search not in str(o).lower(): continue
-            curr_g = (o.get('termin'), o.get('auto'), o.get('kurs'))
-            if curr_g != last_o: st.markdown(f"<div class='table-group-header'>🔄 {o.get('termin')} | {o.get('auto')} (K{o.get('kurs')})</div>", unsafe_allow_html=True); last_o = curr_g
-            c = st.columns([2.0, 1.2, 5.0, 1.2, 0.6]); c[0].markdown(f"**{o.get('miejsce')}**"); c[1].write(o.get('termin'))
-            u_id = f"o_{o.get('data_p')}_{i}".replace(':','').replace(' ','_')
-            with c[2].popover("Menu"):
-                nt = st.text_input("Data", o.get('termin'), key=f"ot_{u_id}"); na = st.selectbox("Auto", OPCJE_TRANSPORTU, OPCJE_TRANSPORTU.index(o.get('auto','Brak')), key=f"oa_{u_id}"); nk = st.selectbox("Kurs", [1,2,3,4,5], int(o.get('kurs',1))-1, key=f"ok_{u_id}"); ntow = st.text_area("Co?", o.get('towar',''), key=f"ow_{u_id}")
-                if st.button("Zapisz", key=f"os_{u_id}"): dane["odbiory"][i].update({"termin":nt,"auto":na,"kurs":nk,"towar":ntow}); zapisz_dane(dane); st.rerun()
-            if c[3].button("GOTOWE", key=f"og_{u_id}"): dane["odbiory_historia"].append(dane["odbiory"].pop(i)); zapisz_dane(dane); st.rerun()
-            if c[4].button("X", key=f"ox_{u_id}"): dane["odbiory"].pop(i); zapisz_dane(dane); st.rerun()
+        if not dane["odbiory"]: st.info("Brak aktywnych odbiorów.")
+        else:
+            hc = st.columns([2.0, 1.2, 5.0, 1.2, 0.6])
+            hc[0].markdown('<div class="label-text">Dostawca / Skąd</div>', unsafe_allow_html=True); hc[1].markdown('<div class="label-text">Termin</div>', unsafe_allow_html=True); hc[2].markdown('<div class="label-text">Menu</div>', unsafe_allow_html=True); hc[3].markdown('<div class="label-text">Status</div>', unsafe_allow_html=True)
+            last_o = None
+            for i, o in enumerate(dane["odbiory"]):
+                if search and search not in str(o).lower(): continue
+                curr_g = (o.get('termin'), o.get('auto'), o.get('kurs'))
+                if curr_g != last_o: st.markdown(f"<div class='table-group-header'>🔄 {o.get('termin')} | Auto: {o.get('auto')} (K{o.get('kurs')})</div>", unsafe_allow_html=True); last_o = curr_g
+                c = st.columns([2.0, 1.2, 5.0, 1.2, 0.6]); b_st = '<span class="badge-status-return">🔄 W TOKU</span>'
+                c[0].markdown(f"**{o.get('miejsce')}**<br>{b_st}", unsafe_allow_html=True); c[1].write(o.get('termin'))
+                u_id = f"o_{o.get('data_p')}_{i}".replace(':','').replace(' ','_')
+                with c[2].popover("Menu"):
+                    nt = st.text_input("Data", o.get('termin'), key=f"ot_{u_id}"); na = st.selectbox("Auto", OPCJE_TRANSPORTU, OPCJE_TRANSPORTU.index(o.get('auto','Brak')), key=f"oa_{u_id}"); nk = st.selectbox("Kurs", [1,2,3,4,5], int(o.get('kurs',1))-1, key=f"ok_{u_id}"); ntow = st.text_area("Co odebrać?", o.get('towar',''), key=f"ow_{u_id}")
+                    if st.button("Zapisz", key=f"os_{u_id}"): dane["odbiory"][i].update({"termin":nt,"auto":na,"kurs":nk,"towar":ntow}); zapisz_dane(dane); st.rerun()
+                if c[3].button("GOTOWE", key=f"og_{u_id}"): dane["odbiory_historia"].append(dane["odbiory"].pop(i)); zapisz_dane(dane); st.rerun()
+                if c[4].button("X", key=f"ox_{u_id}"): dane["odbiory"].pop(i); zapisz_dane(dane); st.rerun()
     with to2: st.dataframe(dane["odbiory_historia"][::-1], use_container_width=True)
 
 with t_log:
     tl1, tl2 = st.tabs(["Aktywne", "Historia"])
     with tl1:
-        hc = st.columns([2.0, 1.2, 5.0, 1.2, 0.6]); hc[0].write("**Dostawca**"); hc[1].write("**Termin**")
-        last_p = None
-        for i, p in enumerate(dane["przyjecia"]):
-            if search and search not in str(p).lower(): continue
-            if p.get('termin') != last_p: st.markdown(f"<div class='table-group-header'>🚚 {p.get('termin')} | Przyjęcia PZ</div>", unsafe_allow_html=True); last_p = p.get('termin')
-            c = st.columns([2.0, 1.2, 5.0, 1.2, 0.6]); c[0].markdown(f"**{p.get('dostawca')}**"); c[1].write(p.get('termin'))
-            u_id = f"p_{p.get('data_p')}_{i}".replace(':','').replace(' ','_')
-            with c[2].popover("Menu"):
-                nt = st.text_input("Data", p.get('termin'), key=f"pt_{u_id}"); no = st.text_area("Co?", p.get('towar',''), key=f"po_{u_id}")
-                if st.button("Zapisz", key=f"ps_{u_id}"): dane["przyjecia"][i].update({"termin":nt,"towar":no}); zapisz_dane(dane); st.rerun()
-            if c[3].button("OK", key=f"pok_{u_id}"): dane["przyjecia_historia"].append(dane["przyjecia"].pop(i)); zapisz_dane(dane); st.rerun()
-            if c[4].button("X", key=f"px_{u_id}"): dane["przyjecia"].pop(i); zapisz_dane(dane); st.rerun()
+        if not dane["przyjecia"]: st.info("Brak aktywnych dostaw.")
+        else:
+            hc = st.columns([2.0, 1.2, 5.0, 1.2, 0.6])
+            hc[0].markdown('<div class="label-text">Dostawca</div>', unsafe_allow_html=True); hc[1].markdown('<div class="label-text">Termin</div>', unsafe_allow_html=True); hc[2].markdown('<div class="label-text">Menu</div>', unsafe_allow_html=True); hc[3].markdown('<div class="label-text">Status</div>', unsafe_allow_html=True)
+            last_p = None
+            for i, p in enumerate(dane["przyjecia"]):
+                if search and search not in str(p).lower(): continue
+                if p.get('termin') != last_p: st.markdown(f"<div class='table-group-header'>🚚 {p.get('termin')} | Dostawy towarów</div>", unsafe_allow_html=True); last_p = p.get('termin')
+                c = st.columns([2.0, 1.2, 5.0, 1.2, 0.6]); b_st = '<span class="badge-status-prod">🚚 OCZEKUJE</span>'
+                c[0].markdown(f"**{p.get('dostawca')}**<br>{b_st}", unsafe_allow_html=True); c[1].write(p.get('termin'))
+                u_id = f"p_{p.get('data_p')}_{i}".replace(':','').replace(' ','_')
+                with c[2].popover("Menu"):
+                    nt = st.text_input("Data", p.get('termin'), key=f"pt_{u_id}"); no = st.text_area("Towar", p.get('towar',''), key=f"po_{u_id}")
+                    if st.button("Zapisz", key=f"ps_{u_id}"): dane["przyjecia"][i].update({"termin":nt,"towar":no}); zapisz_dane(dane); st.rerun()
+                if c[3].button("OK", key=f"pok_{u_id}"): dane["przyjecia_historia"].append(dane["przyjecia"].pop(i)); zapisz_dane(dane); st.rerun()
+                if c[4].button("X", key=f"px_{u_id}"): dane["przyjecia"].pop(i); zapisz_dane(dane); st.rerun()
     with tl2: st.dataframe(dane["przyjecia_historia"][::-1], use_container_width=True)
 
 with t_dysp:
     td1, td2 = st.tabs(["Aktywne", "Historia"])
     with td1:
-        hc = st.columns([2.0, 1.2, 5.0, 1.2, 0.6]); hc[0].write("**Zadanie**"); hc[1].write("**Termin**")
-        last_d = None
-        for i, d in enumerate(dane["dyspozycje"]):
-            if search and search not in str(d).lower(): continue
-            if d.get('termin') != last_d: st.markdown(f"<div class='table-group-header'>📋 {d.get('termin')} | Zadania</div>", unsafe_allow_html=True); last_d = d.get('termin')
-            c = st.columns([2.0, 1.2, 5.0, 1.2, 0.6]); c[0].markdown(f"**{d.get('tytul')}**"); c[1].write(d.get('termin'))
-            u_id = f"d_{d.get('data_p')}_{i}".replace(':','').replace(' ','_')
-            with c[2].popover("Menu"):
-                nt = st.text_input("Termin", d.get('termin'), key=f"dt_{u_id}"); no = st.text_area("Opis", d.get('opis',''), key=f"do_{u_id}")
-                if st.button("Zapisz", key=f"ds_{u_id}"): dane["dyspozycje"][i].update({"termin":nt,"opis":no}); zapisz_dane(dane); st.rerun()
-            if c[3].button("GOTOWE", key=f"dg_{u_id}"): dane["dyspozycje_historia"].append(dane["dyspozycje"].pop(i)); zapisz_dane(dane); st.rerun()
-            if c[4].button("X", key=f"dx_{u_id}"): dane["dyspozycje"].pop(i); zapisz_dane(dane); st.rerun()
+        if not dane["dyspozycje"]: st.info("Brak aktywnych zadań.")
+        else:
+            hc = st.columns([2.0, 1.2, 5.0, 1.2, 0.6])
+            hc[0].markdown('<div class="label-text">Tytuł zadania</div>', unsafe_allow_html=True); hc[1].markdown('<div class="label-text">Termin</div>', unsafe_allow_html=True); hc[2].markdown('<div class="label-text">Menu</div>', unsafe_allow_html=True); hc[3].markdown('<div class="label-text">Status</div>', unsafe_allow_html=True)
+            last_d = None
+            for i, d in enumerate(dane["dyspozycje"]):
+                if search and search not in str(d).lower(): continue
+                if d.get('termin') != last_d: st.markdown(f"<div class='table-group-header'>📋 {d.get('termin')} | Zadania wewnętrzne</div>", unsafe_allow_html=True); last_d = d.get('termin')
+                c = st.columns([2.0, 1.2, 5.0, 1.2, 0.6]); b_st = '<span class="badge-status-prod">📋 DO WYKONANIA</span>'
+                c[0].markdown(f"**{d.get('tytul')}**<br>{b_st}", unsafe_allow_html=True); c[1].write(d.get('termin'))
+                u_id = f"d_{d.get('data_p')}_{i}".replace(':','').replace(' ','_')
+                with c[2].popover("Menu"):
+                    nt = st.text_input("Termin", d.get('termin'), key=f"dt_{u_id}"); no = st.text_area("Opis", d.get('opis',''), key=f"do_{u_id}")
+                    if st.button("Zapisz", key=f"ds_{u_id}"): dane["dyspozycje"][i].update({"termin":nt,"opis":no}); zapisz_dane(dane); st.rerun()
+                if c[3].button("GOTOWE", key=f"dg_{u_id}"): dane["dyspozycje_historia"].append(dane["dyspozycje"].pop(i)); zapisz_dane(dane); st.rerun()
+                if c[4].button("X", key=f"dx_{u_id}"): dane["dyspozycje"].pop(i); zapisz_dane(dane); st.rerun()
     with td2: st.dataframe(dane["dyspozycje_historia"][::-1], use_container_width=True)
