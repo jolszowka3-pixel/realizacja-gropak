@@ -65,9 +65,9 @@ st.markdown("""
     .day-name { font-weight: 700; font-size: 13px; color: #495057; }
     .day-date { font-size: 11px; color: #868e96; }
     
-    .cal-entry-out { font-size: 10.5px; background: #e7f5ff; color: #0056b3; border-left: 3px solid #0056b3; padding: 5px 6px; margin-bottom: 5px; border-radius: 4px; font-weight: 600; line-height: 1.2;}
-    .cal-entry-in { font-size: 10.5px; background: #f3f9f1; color: #28a745; border-left: 3px solid #28a745; padding: 5px 6px; margin-bottom: 5px; border-radius: 4px; font-weight: 600; line-height: 1.2;}
-    .cal-entry-task { font-size: 10.5px; background: #fff4e6; color: #d9480f; border-left: 3px solid #d9480f; padding: 5px 6px; margin-bottom: 5px; border-radius: 4px; font-weight: 600; line-height: 1.2;}
+    .cal-entry-out { cursor: help; font-size: 10.5px; background: #e7f5ff; color: #0056b3; border-left: 3px solid #0056b3; padding: 5px 6px; margin-bottom: 5px; border-radius: 4px; font-weight: 600; line-height: 1.2;}
+    .cal-entry-in { cursor: help; font-size: 10.5px; background: #f3f9f1; color: #28a745; border-left: 3px solid #28a745; padding: 5px 6px; margin-bottom: 5px; border-radius: 4px; font-weight: 600; line-height: 1.2;}
+    .cal-entry-task { cursor: help; font-size: 10.5px; background: #fff4e6; color: #d9480f; border-left: 3px solid #d9480f; padding: 5px 6px; margin-bottom: 5px; border-radius: 4px; font-weight: 600; line-height: 1.2;}
     
     .badge-urgent { background-color: #dc3545; color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold; margin-left: 5px; }
     .label-text { font-size: 11px; color: #6c757d; font-weight: 700; text-transform: uppercase; margin-bottom: 5px; }
@@ -138,7 +138,7 @@ if not st.session_state.user:
                     st.error("Błąd logowania")
     st.stop()
 
-# --- 4. PANEL BOCZNY (UPIĘKSZONY) ---
+# --- 4. PANEL BOCZNY ---
 with st.sidebar:
     st.write(f"Zalogowany: **{st.session_state.user}**")
     if st.button("🚪 Wyloguj"): st.session_state.user = None; st.rerun()
@@ -202,7 +202,7 @@ c_s1.metric("📦 Aktywne Zlecenia", len(dane["w_realizacji"]))
 c_s2.metric("🚚 Oczekujące Dostawy", len(dane["przyjecia"]))
 c_s3.metric("📋 Dyspozycje w toku", len(dane["dyspozycje"]))
 
-# --- 6. TERMINARZ TYGODNIOWY (NOWY UKŁAD HTML GRID) ---
+# --- 6. TERMINARZ TYGODNIOWY ---
 st.markdown('<div class="section-header">Terminarz Tygodniowy</div>', unsafe_allow_html=True)
 if "week_offset" not in st.session_state: st.session_state.week_offset = 0
 
@@ -234,23 +234,32 @@ for i, date in enumerate(dates_in_week):
     
     d_val, m_val = date.day, date.month
     
+    # PRODUKCJA - Tooltipy
     for z in dane["w_realizacji"]:
         zd, zm = parse_d(z.get('termin', ''))
         if zd == d_val and zm == m_val:
             p_mark = "🔥 " if z.get('pilne') else ""
-            html_calendar += f'<div class="cal-entry-out">{p_mark}W: {z.get("klient", "-")}</div>'
+            opis_safe = str(z.get('opis', 'Brak opisu')).replace('"', '&quot;')
+            tooltip = f"Specyfikacja: {opis_safe}&#10;Dodano: {z.get('data_p', '-')} ({z.get('autor', '-')})"
+            html_calendar += f'<div class="cal-entry-out" title="{tooltip}">{p_mark}W: {z.get("klient", "-")}</div>'
     
+    # LOGISTYKA - Tooltipy
     for p in dane["przyjecia"]:
         pd, pm = parse_d(p.get('termin', ''))
         if pd == d_val and pm == m_val:
             p_mark = "🔥 " if p.get('pilne') else ""
-            html_calendar += f'<div class="cal-entry-in">{p_mark}P: {p.get("dostawca", "-")}</div>'
+            towar_safe = str(p.get('towar', 'Brak szczegółów')).replace('"', '&quot;')
+            tooltip = f"Towar: {towar_safe}&#10;Dodano: {p.get('data_p', '-')} ({p.get('autor', '-')})"
+            html_calendar += f'<div class="cal-entry-in" title="{tooltip}">{p_mark}P: {p.get("dostawca", "-")}</div>'
     
+    # DYSPOZYCJE - Tooltipy
     for ds in dane["dyspozycje"]:
         dd, dm = parse_d(ds.get('termin', ''))
         if dd == d_val and dm == m_val:
             p_mark = "🔥 " if ds.get('pilne') else ""
-            html_calendar += f'<div class="cal-entry-task">{p_mark}D: {ds.get("tytul", "-")}</div>'
+            opis_safe = str(ds.get('opis', 'Brak opisu')).replace('"', '&quot;')
+            tooltip = f"Zadanie: {opis_safe}&#10;Dodano: {ds.get('data_p', '-')} ({ds.get('autor', '-')})"
+            html_calendar += f'<div class="cal-entry-task" title="{tooltip}">{p_mark}D: {ds.get("tytul", "-")}</div>'
             
     html_calendar += '</div>' 
 html_calendar += '</div>' 
