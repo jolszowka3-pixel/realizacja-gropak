@@ -54,6 +54,25 @@ st.markdown("""
 # --- 2. LOGIKA BAZY DANYCH I SORTOWANIE ---
 PLIK_DANYCH = "baza_gropak_v3.json"
 
+def posortuj_dane(dane):
+    """Funkcja układająca zlecenia od najbliższej daty"""
+    def sort_key(item):
+        pilne = 0 if item.get('pilne') else 1 # Pilne idą na górę
+        try:
+            parts = str(item.get('termin', '')).strip().split('.')
+            if len(parts) >= 2:
+                d, m = int(parts[0]), int(parts[1])
+                y = int(parts[2]) if len(parts) > 2 else 2026
+                return (0, y, m, d, pilne)
+            return (1, 9999, 99, 99, pilne) # Brak poprawnej daty ląduje na dole
+        except:
+            return (1, 9999, 99, 99, pilne)
+
+    if "w_realizacji" in dane: dane["w_realizacji"].sort(key=sort_key)
+    if "przyjecia" in dane: dane["przyjecia"].sort(key=sort_key)
+    if "dyspozycje" in dane: dane["dyspozycje"].sort(key=sort_key)
+    return dane
+
 def wczytaj_dane():
     default_dane = {
         "w_realizacji": [], "zrealizowane": [], 
@@ -67,26 +86,12 @@ def wczytaj_dane():
                 d = json.load(f)
                 for k, v in default_dane.items():
                     if k not in d: d[k] = v
-                return d
+                return posortuj_dane(d) # Sortowanie od razu po wczytaniu pliku!
         except: pass
     return default_dane
 
 def zapisz_dane(dane):
-    # --- NOWOŚĆ: Automatyczne sortowanie ---
-    def sort_key(item):
-        pilne_score = 0 if item.get('pilne') else 1 # PILNE lądują wyżej (0 jest przed 1)
-        try:
-            parts = str(item.get('termin', '')).split('.')
-            m, d = int(parts[1]), int(parts[0])
-            return (0, m, d, pilne_score) # Sortuje: miesiąc -> dzień -> czy pilne
-        except:
-            return (1, 99, 99, pilne_score) # Jeśli ktoś nie wpisze daty, spada na sam dół
-
-    if "w_realizacji" in dane: dane["w_realizacji"].sort(key=sort_key)
-    if "przyjecia" in dane: dane["przyjecia"].sort(key=sort_key)
-    if "dyspozycje" in dane: dane["dyspozycje"].sort(key=sort_key)
-    # ---------------------------------------
-
+    dane = posortuj_dane(dane) # Sortowanie tuż przed zapisem
     with open(PLIK_DANYCH, "w", encoding="utf-8") as f:
         json.dump(dane, f, indent=4)
 
