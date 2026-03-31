@@ -85,6 +85,17 @@ div[data-testid="stPopover"] > button { min-height: 32px !important; height: 32p
 .label-text { font-size: 11px; color: #6c757d; font-weight: 700; text-transform: uppercase; border-bottom: 1px solid #dee2e6; padding-bottom: 4px;}
 button[data-baseweb="tab"] { font-size: 16px !important; font-weight: 600 !important; }
 
+/* Styl dla bezpośredniego wyświetlania tekstu produktów w tabeli */
+.readonly-text { 
+    font-size: 13px; 
+    white-space: pre-wrap; 
+    color: #495057; 
+    line-height: 1.4; 
+    padding: 5px;
+    background: #fdfdfd;
+    border-radius: 4px;
+}
+
 div[data-testid="stHorizontalBlock"] { align-items: flex-start !important; }
 </style>
 """, unsafe_allow_html=True)
@@ -220,6 +231,7 @@ if not st.session_state.user:
     st.stop()
 
 # --- SKRÓTY UPRAWNIEŃ ---
+is_readonly = st.session_state.role == "wgląd"
 can_edit = st.session_state.role in ["admin", "edycja"]
 is_admin = st.session_state.role == "admin"
 
@@ -235,48 +247,36 @@ with st.sidebar:
 
     if is_admin:
         with st.expander("👥 Zarządzanie użytkownikami"):
-            # Sekcja dodawania
             st.write("**Dodaj nowego:**")
             with st.form("add_u_f", clear_on_submit=True):
                 new_u = st.text_input("Login"); new_p = st.text_input("Hasło"); new_r = st.selectbox("Rola:", ["edycja", "wgląd", "admin"])
                 if st.form_submit_button("Dodaj użytkownika"):
                     if new_u: dane["uzytkownicy"][new_u] = {"pass": new_p, "role": new_r}; zapisz_dane(dane); st.rerun()
-            
             st.divider()
             st.write("**Istniejące konta:**")
             for usr, info in dane["uzytkownicy"].items():
                 c1, c2, c3 = st.columns([2, 1.2, 0.8])
                 c1.write(f"**{usr}**")
-                
                 with c2.popover("Edytuj"):
                     e_p = st.text_input("Hasło", info["pass"], key=f"up_{usr}")
                     e_r = st.selectbox("Rola", ["edycja", "wgląd", "admin"], ["edycja", "wgląd", "admin"].index(info["role"]), key=f"ur_{usr}")
                     if st.button("💾 Zapisz", key=f"us_{usr}"):
-                        dane["uzytkownicy"][usr] = {"pass": e_p, "role": e_r}
-                        zapisz_dane(dane); st.rerun()
-                
+                        dane["uzytkownicy"][usr] = {"pass": e_p, "role": e_r}; zapisz_dane(dane); st.rerun()
                 if usr != "admin":
-                    if c3.button("X", key=f"del_{usr}"):
-                        del dane["uzytkownicy"][usr]; zapisz_dane(dane); st.rerun()
+                    if c3.button("X", key=f"del_{usr}"): del dane["uzytkownicy"][usr]; zapisz_dane(dane); st.rerun()
 
         with st.expander("🛠️ Korekta i Przywracanie"):
             kat = st.selectbox("Dział:", ["Produkcja", "Odbiory", "Przyjęcia", "Dyspozycje"])
             if kat == "Produkcja":
                 for i, item in enumerate(dane["zrealizowane"]):
-                    st.markdown(f"**{item.get('klient')}**")
-                    c1, c2 = st.columns(2)
-                    if c1.button("↩️ Przywróć", key=f"res_p_{i}"):
-                        dane["w_realizacji"].append(dane["zrealizowane"].pop(i)); zapisz_dane(dane); st.rerun()
-                    if c2.button("❌ Usuń", key=f"fdel_p_{i}"):
-                        dane["zrealizowane"].pop(i); zapisz_dane(dane); st.rerun()
+                    st.markdown(f"**{item.get('klient')}**"); c1, c2 = st.columns(2)
+                    if c1.button("↩️ Przywróć", key=f"res_p_{i}"): dane["w_realizacji"].append(dane["zrealizowane"].pop(i)); zapisz_dane(dane); st.rerun()
+                    if c2.button("❌ Usuń", key=f"fdel_p_{i}"): dane["zrealizowane"].pop(i); zapisz_dane(dane); st.rerun()
             elif kat == "Odbiory":
                 for i, item in enumerate(dane["odbiory_historia"]):
-                    st.markdown(f"**{item.get('miejsce')}**")
-                    c1, c2 = st.columns(2)
-                    if c1.button("↩️ Przywróć", key=f"res_o_{i}"):
-                        dane["odbiory"].append(dane["odbiory_historia"].pop(i)); zapisz_dane(dane); st.rerun()
-                    if c2.button("❌ Usuń", key=f"fdel_o_{i}"):
-                        dane["odbiory_historia"].pop(i); zapisz_dane(dane); st.rerun()
+                    st.markdown(f"**{item.get('miejsce')}**"); c1, c2 = st.columns(2)
+                    if c1.button("↩️ Przywróć", key=f"res_o_{i}"): dane["odbiory"].append(dane["odbiory_historia"].pop(i)); zapisz_dane(dane); st.rerun()
+                    if c2.button("❌ Usuń", key=f"fdel_o_{i}"): dane["odbiory_historia"].pop(i); zapisz_dane(dane); st.rerun()
         st.divider()
 
     if can_edit:
@@ -380,7 +380,11 @@ with t_prod:
         if not z_aktywne: st.info("Brak aktywnych zleceń.")
         else:
             hc = st.columns([2.0, 1.2, 5.0, 1.2, 0.6])
-            hc[0].markdown('<div class="label-text">Klient</div>', unsafe_allow_html=True); hc[1].markdown('<div class="label-text">Termin</div>', unsafe_allow_html=True); hc[2].markdown('<div class="label-text">Menu</div>', unsafe_allow_html=True); hc[3].markdown('<div class="label-text">Status</div>', unsafe_allow_html=True)
+            hc[0].markdown('<div class="label-text">Klient</div>', unsafe_allow_html=True); hc[1].markdown('<div class="label-text">Termin</div>', unsafe_allow_html=True)
+            # Dynamiczny nagłówek kolumny szczegółów
+            hc[2].markdown(f'<div class="label-text">{"Produkty / Szczegóły" if is_readonly else "Menu"}</div>', unsafe_allow_html=True)
+            hc[3].markdown(f'<div class="label-text">{"Status" if is_readonly else "Akcja"}</div>', unsafe_allow_html=True)
+            
             last_g = None
             for i, z in enumerate(dane["w_realizacji"]):
                 if not str(z.get('termin','')).strip(): continue
@@ -389,27 +393,37 @@ with t_prod:
                 if curr_g != last_g: st.markdown(f"<div class='table-group-header'>📅 {z.get('termin')} | {z.get('auto')} (K{z.get('kurs')})</div>", unsafe_allow_html=True); last_g = curr_g
                 c = st.columns([2.0, 1.2, 5.0, 1.2, 0.6]); status = z.get('status','W produkcji'); b_st = '<span class="badge-status-ready">✅ GOTOWE</span>' if status=='Gotowe' else '<span class="badge-status-prod">⏳ PRODUKCJA</span>'
                 c[0].markdown(f"**{z.get('klient')}** {'🔥' if z.get('pilne') else ''}<br>{b_st}", unsafe_allow_html=True); c[1].write(z.get('termin'))
+                
                 u_id = f"z_{z.get('data_p')}_{i}".replace(':','').replace(' ','_')
-                with c[2].popover("Opcje"):
-                    st.download_button("🖨️ Karta", generuj_html_do_druku(z), f"Karta_{u_id}.html", "text/html", key=f"dl_{u_id}")
-                    if can_edit:
+                
+                if is_readonly:
+                    # Widok tylko wgląd: tekst bezpośrednio
+                    c[2].markdown(f"<div class='readonly-text'>{z.get('szczegoly','-')}</div>", unsafe_allow_html=True)
+                else:
+                    # Widok edycji: popover
+                    with c[2].popover("Opcje"):
+                        st.download_button("🖨️ Karta", generuj_html_do_druku(z), f"Karta_{u_id}.html", "text/html", key=f"dl_{u_id}")
                         nt = st.text_input("Data", z.get('termin'), key=f"et_{u_id}"); na = st.selectbox("Auto", OPCJE_TRANSPORTU, OPCJE_TRANSPORTU.index(z.get('auto','Brak')), key=f"ea_{u_id}"); nk = st.selectbox("Kurs", [1,2,3,4,5], int(z.get('kurs',1))-1, key=f"k_{u_id}"); ns = st.text_area("Produkty", z.get('szczegoly',''), key=f"s_{u_id}")
                         if st.button("Zapisz zmiany", key=f"sv_{u_id}"): dane["w_realizacji"][i].update({"termin":nt,"auto":na,"kurs":nk,"szczegoly":ns}); zapisz_dane(dane); st.rerun()
-                if can_edit:
                     if status != "Gotowe":
                         if c[3].button("ZROBIONE", key=f"done_{u_id}"): dane["w_realizacji"][i]['status']="Gotowe"; zapisz_dane(dane); st.rerun()
                     else:
                         if c[3].button("WYŚLIJ", key=f"send_{u_id}"): dane["zrealizowane"].append(dane["w_realizacji"].pop(i)); zapisz_dane(dane); st.rerun()
                     if c[4].button("X", key=f"x_{u_id}"): dane["w_realizacji"].pop(i); zapisz_dane(dane); st.rerun()
+    
     with tp_planned:
         for i, z in enumerate(dane["w_realizacji"]):
             if str(z.get('termin','')).strip(): continue
-            c = st.columns([2.0, 1.2, 5.0, 1.2, 0.6]); c[0].markdown(f"**{z.get('klient')}**<br><span style='color:red;'>BRAK DATY</span>", unsafe_allow_html=True); u_id = f"plan_{z.get('data_p')}_{i}".replace(':','').replace(' ','_')
-            with c[2].popover("Zaplanuj"):
-                if can_edit:
+            if search and search not in str(z).lower(): continue
+            c = st.columns([2.0, 1.2, 5.0, 1.2, 0.6]); c[0].markdown(f"**{z.get('klient')}**<br><span style='color:red;'>BRAK DATY</span>", unsafe_allow_html=True)
+            u_id = f"plan_{z.get('data_p')}_{i}".replace(':','').replace(' ','_')
+            if is_readonly:
+                c[2].markdown(f"<div class='readonly-text'>{z.get('szczegoly','-')}</div>", unsafe_allow_html=True)
+            else:
+                with c[2].popover("Zaplanuj"):
                     nt = st.text_input("Data", "", key=f"etp_{u_id}"); na = st.selectbox("Auto", OPCJE_TRANSPORTU, key=f"eap_{u_id}"); nk = st.selectbox("Kurs", [1,2,3,4,5], key=f"ekp_{u_id}"); ns = st.text_area("Produkty", z.get('szczegoly',''), key=f"sp_{u_id}")
                     if st.button("Zapisz i zaplanuj", key=f"svp_{u_id}"): dane["w_realizacji"][i].update({"termin":nt,"auto":na,"kurs":nk,"szczegoly":ns}); zapisz_dane(dane); st.rerun()
-            if can_edit and c[4].button("X", key=f"xp_{u_id}"): dane["w_realizacji"].pop(i); zapisz_dane(dane); st.rerun()
+                if c[4].button("X", key=f"xp_{u_id}"): dane["w_realizacji"].pop(i); zapisz_dane(dane); st.rerun()
     with tp2: st.dataframe(dane["zrealizowane"][::-1], use_container_width=True)
 
 with t_odb:
@@ -418,7 +432,8 @@ with t_odb:
         if not dane["odbiory"]: st.info("Brak aktywnych odbiorów.")
         else:
             hc = st.columns([2.0, 1.2, 5.0, 1.2, 0.6])
-            hc[0].markdown('<div class="label-text">Dostawca / Skąd</div>', unsafe_allow_html=True); hc[1].markdown('<div class="label-text">Termin</div>', unsafe_allow_html=True); hc[2].markdown('<div class="label-text">Menu</div>', unsafe_allow_html=True); hc[3].markdown('<div class="label-text">Status</div>', unsafe_allow_html=True)
+            hc[0].markdown('<div class="label-text">Dostawca / Skąd</div>', unsafe_allow_html=True); hc[1].markdown('<div class="label-text">Termin</div>', unsafe_allow_html=True)
+            hc[2].markdown(f'<div class="label-text">{"Co odebrać?" if is_readonly else "Menu"}</div>', unsafe_allow_html=True)
             last_o = None
             for i, o in enumerate(dane["odbiory"]):
                 if search and search not in str(o).lower(): continue
@@ -427,11 +442,12 @@ with t_odb:
                 c = st.columns([2.0, 1.2, 5.0, 1.2, 0.6]); b_st = '<span class="badge-status-return">🔄 W TOKU</span>'
                 c[0].markdown(f"**{o.get('miejsce')}**<br>{b_st}", unsafe_allow_html=True); c[1].write(o.get('termin'))
                 u_id = f"o_{o.get('data_p')}_{i}".replace(':','').replace(' ','_')
-                with c[2].popover("Edytuj"):
-                    if can_edit:
+                if is_readonly:
+                    c[2].markdown(f"<div class='readonly-text'>{o.get('towar','-')}</div>", unsafe_allow_html=True)
+                else:
+                    with c[2].popover("Menu"):
                         nt = st.text_input("Data", o.get('termin'), key=f"ot_{u_id}"); na = st.selectbox("Auto", OPCJE_TRANSPORTU, OPCJE_TRANSPORTU.index(o.get('auto','Brak')), key=f"oa_{u_id}"); nk = st.selectbox("Kurs", [1,2,3,4,5], int(o.get('kurs',1))-1, key=f"ok_{u_id}"); ntow = st.text_area("Co odebrać?", o.get('towar',''), key=f"ow_{u_id}")
                         if st.button("Zapisz", key=f"os_{u_id}"): dane["odbiory"][i].update({"termin":nt,"auto":na,"kurs":nk,"towar":ntow}); zapisz_dane(dane); st.rerun()
-                if can_edit:
                     if c[3].button("GOTOWE", key=f"og_{u_id}"): dane["odbiory_historia"].append(dane["odbiory"].pop(i)); zapisz_dane(dane); st.rerun()
                     if c[4].button("X", key=f"ox_{u_id}"): dane["odbiory"].pop(i); zapisz_dane(dane); st.rerun()
     with to2: st.dataframe(dane["odbiory_historia"][::-1], use_container_width=True)
@@ -442,7 +458,8 @@ with t_log:
         if not dane["przyjecia"]: st.info("Brak aktywnych dostaw.")
         else:
             hc = st.columns([2.0, 1.2, 5.0, 1.2, 0.6])
-            hc[0].markdown('<div class="label-text">Dostawca</div>', unsafe_allow_html=True); hc[1].markdown('<div class="label-text">Termin</div>', unsafe_allow_html=True); hc[2].markdown('<div class="label-text">Menu</div>', unsafe_allow_html=True); hc[3].markdown('<div class="label-text">Status</div>', unsafe_allow_html=True)
+            hc[0].markdown('<div class="label-text">Dostawca</div>', unsafe_allow_html=True); hc[1].markdown('<div class="label-text">Termin</div>', unsafe_allow_html=True)
+            hc[2].markdown(f'<div class="label-text">{"Zawartość dostawy" if is_readonly else "Menu"}</div>', unsafe_allow_html=True)
             last_p = None
             for i, p in enumerate(dane["przyjecia"]):
                 if search and search not in str(p).lower(): continue
@@ -450,11 +467,12 @@ with t_log:
                 c = st.columns([2.0, 1.2, 5.0, 1.2, 0.6]); b_st = '<span class="badge-status-prod">🚚 OCZEKUJE</span>'
                 c[0].markdown(f"**{p.get('dostawca')}**<br>{b_st}", unsafe_allow_html=True); c[1].write(p.get('termin'))
                 u_id = f"p_{p.get('data_p')}_{i}".replace(':','').replace(' ','_')
-                with c[2].popover("Menu"):
-                    if can_edit:
+                if is_readonly:
+                    c[2].markdown(f"<div class='readonly-text'>{p.get('towar','-')}</div>", unsafe_allow_html=True)
+                else:
+                    with c[2].popover("Menu"):
                         nt = st.text_input("Data", p.get('termin'), key=f"pt_{u_id}"); no = st.text_area("Towar", p.get('towar',''), key=f"po_{u_id}")
                         if st.button("Zapisz", key=f"ps_{u_id}"): dane["przyjecia"][i].update({"termin":nt,"towar":no}); zapisz_dane(dane); st.rerun()
-                if can_edit:
                     if c[3].button("OK", key=f"pok_{u_id}"): dane["przyjecia_historia"].append(dane["przyjecia"].pop(i)); zapisz_dane(dane); st.rerun()
                     if c[4].button("X", key=f"px_{u_id}"): dane["przyjecia"].pop(i); zapisz_dane(dane); st.rerun()
     with tl2: st.dataframe(dane["przyjecia_historia"][::-1], use_container_width=True)
@@ -465,7 +483,8 @@ with t_dysp:
         if not dane["dyspozycje"]: st.info("Brak aktywnych zadań.")
         else:
             hc = st.columns([2.0, 1.2, 5.0, 1.2, 0.6])
-            hc[0].markdown('<div class="label-text">Tytuł zadania</div>', unsafe_allow_html=True); hc[1].markdown('<div class="label-text">Termin</div>', unsafe_allow_html=True); hc[2].markdown('<div class="label-text">Menu</div>', unsafe_allow_html=True); hc[3].markdown('<div class="label-text">Status</div>', unsafe_allow_html=True)
+            hc[0].markdown('<div class="label-text">Tytuł zadania</div>', unsafe_allow_html=True); hc[1].markdown('<div class="label-text">Termin</div>', unsafe_allow_html=True)
+            hc[2].markdown(f'<div class="label-text">{"Opis zadania" if is_readonly else "Menu"}</div>', unsafe_allow_html=True)
             last_d = None
             for i, d in enumerate(dane["dyspozycje"]):
                 if search and search not in str(d).lower(): continue
@@ -473,11 +492,12 @@ with t_dysp:
                 c = st.columns([2.0, 1.2, 5.0, 1.2, 0.6]); b_st = '<span class="badge-status-prod">📋 DO WYKONANIA</span>'
                 c[0].markdown(f"**{d.get('tytul')}**<br>{b_st}", unsafe_allow_html=True); c[1].write(d.get('termin'))
                 u_id = f"d_{d.get('data_p')}_{i}".replace(':','').replace(' ','_')
-                with c[2].popover("Menu"):
-                    if can_edit:
+                if is_readonly:
+                    c[2].markdown(f"<div class='readonly-text'>{d.get('opis','-')}</div>", unsafe_allow_html=True)
+                else:
+                    with c[2].popover("Menu"):
                         nt = st.text_input("Termin", d.get('termin'), key=f"dt_{u_id}"); no = st.text_area("Opis", d.get('opis',''), key=f"do_{u_id}")
                         if st.button("Zapisz", key=f"ds_{u_id}"): dane["dyspozycje"][i].update({"termin":nt,"opis":no}); zapisz_dane(dane); st.rerun()
-                if can_edit:
                     if c[3].button("GOTOWE", key=f"dg_{u_id}"): dane["dyspozycje_historia"].append(dane["dyspozycje"].pop(i)); zapisz_dane(dane); st.rerun()
                     if c[4].button("X", key=f"dx_{u_id}"): dane["dyspozycje"].pop(i); zapisz_dane(dane); st.rerun()
     with td2: st.dataframe(dane["dyspozycje_historia"][::-1], use_container_width=True)
