@@ -72,6 +72,104 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
+# Zmienne sesyjne
+if "print_order" not in st.session_state: st.session_state.print_order = None
+
+# --- WIDOK DRUKOWANIA (Karta A4) ---
+if st.session_state.print_order is not None:
+    z = st.session_state.print_order
+    st.markdown("""
+    <style>
+    /* Ukrywamy elementy interfejsu aplikacji na czas drukowania */
+    [data-testid="stSidebar"] {display: none;}
+    header {display: none;}
+    .stApp {background-color: white;}
+    
+    @media print {
+        .no-print {display: none !important;}
+        body {background-color: white;}
+    }
+    
+    .print-card {
+        border: 4px solid #212529; padding: 40px; margin: 20px auto; max-width: 900px;
+        background: white; color: #212529; font-family: 'Arial', sans-serif;
+    }
+    .print-title { text-align: center; font-size: 36px; font-weight: 900; border-bottom: 4px solid #212529; padding-bottom: 15px; margin-bottom: 30px; text-transform: uppercase; }
+    .print-row { display: flex; margin-bottom: 25px; }
+    .print-col { flex: 1; padding-right: 20px;}
+    .print-label { font-size: 14px; font-weight: 700; color: #6c757d; text-transform: uppercase; margin-bottom: 5px; }
+    .print-val { font-size: 26px; font-weight: 800; }
+    .print-val-text { font-size: 22px; white-space: pre-wrap; font-weight: 500; }
+    .print-urgent { color: #dc3545; border: 5px solid #dc3545; font-size: 30px; font-weight: 900; text-align: center; padding: 15px; margin-bottom: 30px; text-transform: uppercase; letter-spacing: 2px;}
+    </style>
+    """, unsafe_allow_html=True)
+    
+    # Pasek narzędziowy na górze (nie drukuje się)
+    st.markdown('<div class="no-print">', unsafe_allow_html=True)
+    col_btn1, col_btn2 = st.columns([1, 4])
+    with col_btn1:
+        if st.button("⬅️ Wróć do systemu"):
+            st.session_state.print_order = None
+            st.rerun()
+    with col_btn2:
+        st.info("🖨️ Naciśnij **Ctrl + P** na klawiaturze, aby wydrukować tę kartę. Możesz ją potem przypiąć na tablicy!")
+    st.markdown('</div>', unsafe_allow_html=True)
+    
+    # Generowanie HTML karty A4
+    pilne_html = '<div class="print-urgent">🔥 ZLECENIE PILNE 🔥</div>' if z.get('pilne') else ''
+    auto_val = z.get('auto', 'Brak')
+    k_val = z.get('kurs', 1)
+    transport_str = f"{auto_val} / Kurs nr {k_val}" if auto_val in ["Auto 1", "Auto 2"] else auto_val
+    
+    html_karta = f"""
+    <div class="print-card">
+        {pilne_html}
+        <div class="print-title">Karta Zlecenia Produkcyjnego</div>
+        
+        <div class="print-row">
+            <div class="print-col">
+                <div class="print-label">Klient / Firma</div>
+                <div class="print-val">{z.get('klient', '-')}</div>
+            </div>
+            <div class="print-col">
+                <div class="print-label">Termin Realizacji</div>
+                <div class="print-val">{z.get('termin', '-')}</div>
+            </div>
+        </div>
+        
+        <div class="print-row">
+            <div class="print-col">
+                <div class="print-label">Transport / Logistyka</div>
+                <div class="print-val">{transport_str}</div>
+            </div>
+            <div class="print-col">
+                <div class="print-label">Data dodania (Kto dodał)</div>
+                <div class="print-val" style="font-size: 20px;">{z.get('data_p', '-')} ({z.get('autor', '-')})</div>
+            </div>
+        </div>
+        
+        <hr style="border-top: 3px dashed #dee2e6; margin: 30px 0;">
+        
+        <div style="margin-bottom: 30px;">
+            <div class="print-label">Specyfikacja Ogólna</div>
+            <div class="print-val-text">{z.get('opis', 'Brak specyfikacji')}</div>
+        </div>
+        
+        <div>
+            <div class="print-label">Szczegóły Zamówienia (Ilości, Wymiary)</div>
+            <div class="print-val-text">{z.get('szczegoly', 'Brak szczegółów')}</div>
+        </div>
+        
+        <div style="margin-top: 100px; text-align: right;">
+            <div style="display: inline-block; width: 300px; border-top: 2px solid #000; padding-top: 10px; text-align: center; color: #212529; font-weight: bold; font-size: 16px;">
+                Podpis pracownika (Zrobione)
+            </div>
+        </div>
+    </div>
+    """
+    st.markdown(html_karta, unsafe_allow_html=True)
+    st.stop()  # ZATRZYMUJE ŁADOWANIE RESZTY APLIKACJI - zostaje tylko widok A4!
+
 # --- 2. LOGIKA BAZY DANYCH I SORTOWANIE ---
 PLIK_DANYCH = "baza_gropak_v3.json"
 OPCJE_TRANSPORTU = ["Brak", "Auto 1", "Auto 2", "Transport zewnętrzny", "Odbiór osobisty", "Kurier"]
@@ -245,7 +343,7 @@ with t_prod:
             hc[0].markdown('<div class="label-text">Klient</div>', unsafe_allow_html=True)
             hc[1].markdown('<div class="label-text">Termin</div>', unsafe_allow_html=True)
             hc[2].markdown('<div class="label-text">Dodano</div>', unsafe_allow_html=True)
-            hc[3].markdown('<div class="label-text">Szczegóły / Edycja</div>', unsafe_allow_html=True)
+            hc[3].markdown('<div class="label-text">Opcje / Druk</div>', unsafe_allow_html=True)
             hc[4].markdown('<div class="label-text">Status</div>', unsafe_allow_html=True)
             
             last_group = None
@@ -278,7 +376,12 @@ with t_prod:
                 
                 c[2].write(f"{z.get('data_p')}")
                 
-                with c[3].popover("Edytuj wpis / Opisy / Transport"):
+                with c[3].popover("Edytuj / Drukuj"):
+                    if st.button("🖨️ Wygeneruj Kartę do druku", key=f"druk_{i}"):
+                        st.session_state.print_order = z
+                        st.rerun()
+                        
+                    st.markdown("---")
                     st.markdown("**Transport:**")
                     na = st.selectbox("Transport:", OPCJE_TRANSPORTU, index=OPCJE_TRANSPORTU.index(auto_val), key=f"na{i}")
                     nk = st.selectbox("Kurs:", [1,2,3,4,5], index=k_val-1, key=f"nk{i}")
@@ -330,7 +433,6 @@ with t_log:
                 if c[4].button("OK", key=f"lg{i}"): dane["przyjecia_historia"].append(dane["przyjecia"].pop(i)); zapisz_dane(dane); st.rerun()
                 if c[5].button("X", key=f"lx{i}"): dane["przyjecia"].pop(i); zapisz_dane(dane); st.rerun()
 
-# Tutaj był błąd z t_d zamiast t_dysp. Zmienione na poprawne:
 with t_dysp:
     td1, td2 = st.tabs(["W toku", "Historia"])
     with td1:
