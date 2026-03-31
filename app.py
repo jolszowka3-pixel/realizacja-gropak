@@ -1,7 +1,6 @@
 import streamlit as st
 import json
 import os
-import pandas as pd
 from datetime import datetime, timedelta
 
 # --- 1. KONFIGURACJA I STYLIZACJA ---
@@ -403,7 +402,6 @@ with t_prod:
         if not dane["w_realizacji"]: 
             st.info("Brak aktywnych zleceń.")
         else:
-            # --- ZMIENIONE PROPORCJE KOLUMN ---
             hc = st.columns([1.6, 1.0, 1.0, 3.8, 1.1, 0.5])
             hc[0].markdown('<div class="label-text">Klient</div>', unsafe_allow_html=True)
             hc[1].markdown('<div class="label-text">Termin</div>', unsafe_allow_html=True)
@@ -430,7 +428,6 @@ with t_prod:
                     st.markdown(f'<div class="table-group-header">📅 {z.get("termin")} | {t_label}{k_label}</div>', unsafe_allow_html=True)
                     last_group = current_group
 
-                # --- ZMIENIONE PROPORCJE KOLUMN ---
                 c = st.columns([1.6, 1.0, 1.0, 3.8, 1.1, 0.5])
                 
                 status = z.get('status', 'W produkcji')
@@ -474,7 +471,7 @@ with t_prod:
                 if c[5].button("X", key=f"zx{i}"): dane["w_realizacji"].pop(i); zapisz_dane(dane); st.rerun()
 
     with tp2: 
-        if dane["zrealizowane"]: st.dataframe(pd.DataFrame(dane["zrealizowane"]).iloc[::-1], use_container_width=True)
+        if dane["zrealizowane"]: st.dataframe(dane["zrealizowane"][::-1], use_container_width=True)
 
 with t_log:
     tl1, tl2 = st.tabs(["Aktywne", "Historia"])
@@ -505,6 +502,8 @@ with t_log:
                         zapisz_dane(dane); st.rerun()
                 if c[4].button("OK", key=f"lg{i}"): dane["przyjecia_historia"].append(dane["przyjecia"].pop(i)); zapisz_dane(dane); st.rerun()
                 if c[5].button("X", key=f"lx{i}"): dane["przyjecia"].pop(i); zapisz_dane(dane); st.rerun()
+    with tl2:
+        if dane["przyjecia_historia"]: st.dataframe(dane["przyjecia_historia"][::-1], use_container_width=True)
 
 with t_dysp:
     td1, td2 = st.tabs(["W toku", "Historia"])
@@ -535,3 +534,5 @@ with t_dysp:
                         zapisz_dane(dane); st.rerun()
                 if c[4].button("GOTOWE", key=f"dg{i}"): dane["dyspozycje_historia"].append(dane["dyspozycje"].pop(i)); zapisz_dane(dane); st.rerun()
                 if c[5].button("X", key=f"dx{i}"): dane["dyspozycje"].pop(i); zapisz_dane(dane); st.rerun()
+    with td2:
+        if dane["dyspozycje_historia"]: st.dataframe(dane["dyspozycje_historia"][::-1], use_container_width=True)
