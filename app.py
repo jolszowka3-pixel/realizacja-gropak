@@ -47,12 +47,18 @@ div[data-testid="stPopover"] > button { min-height: 32px !important; height: 32p
 .section-header { background-color: #f8f9fa; padding: 12px 15px; border-radius: 6px; margin-bottom: 12px; margin-top: 25px; font-weight: 700; color: #212529; text-transform: uppercase; border-left: 5px solid #2b3035; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
 .sidebar-header { background: linear-gradient(90deg, #1e7e34, #28a745); color: white; padding: 12px; border-radius: 6px; text-align: center; font-weight: 700; font-size: 14px; margin-bottom: 15px; letter-spacing: 1px; }
 
-/* --- INTELIGENTNY FIX KALENDARZA --- */
-/* Targetujemy tylko bloki poziome, które mają dokładnie 7 kolumn (kalendarz) */
+/* --- NAPRAWA KALENDARZA (ZABETONOWANIE JEDNEJ LINII) --- */
+/* Usuwamy gap między kolumnami tylko w widoku 7-kolumnowym */
+[data-testid="stHorizontalBlock"]:has(> div:nth-child(7)):not(:has(> div:nth-child(8))) {
+    gap: 0px !important;
+}
+
+/* Wymuszamy 1/7 szerokości co do piksela */
 [data-testid="stHorizontalBlock"]:has(> div:nth-child(7)):not(:has(> div:nth-child(8))) > div {
-    flex: 0 0 14.28% !important;
-    min-width: 14.28% !important;
-    max-width: 14.28% !important;
+    flex: 0 0 calc(100% / 7) !important;
+    min-width: calc(100% / 7) !important;
+    max-width: calc(100% / 7) !important;
+    padding: 0 3px !important; /* Margines wewnętrzny zamiast gapa */
 }
 
 .day-col { 
@@ -60,7 +66,7 @@ div[data-testid="stPopover"] > button { min-height: 32px !important; height: 32p
     border: 1px solid #dee2e6; 
     border-radius: 8px; 
     padding: 8px; 
-    min-height: 280px;
+    min-height: 300px;
     width: 100%;
     display: flex;
     flex-direction: column;
@@ -90,13 +96,17 @@ div[data-testid="stPopover"] > button { min-height: 32px !important; height: 32p
 .cal-entry-in { background: #f3f9f1; color: #28a745; border-left: 3px solid #28a745; }
 .cal-entry-task { background: #fff4e6; color: #d9480f; border-left: 3px solid #d9480f; }
 
+/* TABELE - PRZYWRÓCENIE NORMALNEGO UKŁADU */
+[data-testid="stHorizontalBlock"]:has(> div:nth-child(5)):not(:has(> div:nth-child(7))) {
+    gap: 0.5rem !important; /* Przywracamy odstępy w tabelach realizacji */
+}
+
 .table-group-header { background-color: #e9ecef; color: #212529; padding: 6px 12px; font-weight: 700; font-size: 12px; border-radius: 4px; margin: 15px 0 8px 0; border-left: 4px solid #007bff; }
 .badge-status-prod { background-color: #ffc107; color: #212529; padding: 2px 5px; border-radius: 4px; font-size: 9px; font-weight: bold; margin-left: 5px; display: inline-block;}
 .badge-status-ready { background-color: #28a745; color: white; padding: 2px 5px; border-radius: 4px; font-size: 9px; font-weight: bold; margin-left: 5px; display: inline-block;}
 .label-text { font-size: 11px; color: #6c757d; font-weight: 700; text-transform: uppercase; border-bottom: 1px solid #dee2e6; padding-bottom: 4px;}
 button[data-baseweb="tab"] { font-size: 16px !important; font-weight: 600 !important; }
 
-/* Wycentrowanie bloków poziomych w tabelach */
 div[data-testid="stHorizontalBlock"] { align-items: flex-start !important; }
 </style>
 """, unsafe_allow_html=True)
@@ -196,7 +206,7 @@ with st.sidebar:
 
     st.markdown('<div class="sidebar-header">➕ DODAJ NOWY WPIS</div>', unsafe_allow_html=True)
     typ = st.selectbox("Rodzaj:", ["Produkcja", "Dostawa (PZ)", "Dyspozycja"])
-    with st.form("f_add_new", clear_on_submit=True):
+    with st.form("f_add_entry", clear_on_submit=True):
         if typ == "Produkcja":
             kl = st.text_input("👤 Klient"); tm = st.text_input("📅 Termin (np. 31.03)"); op = st.text_area("📝 Specyfikacja"); sz = st.text_area("📦 Ilości"); auto = st.selectbox("Transport:", OPCJE_TRANSPORTU); kurs = st.selectbox("Kurs nr:", [1, 2, 3, 4, 5]); p = st.checkbox("🔥 PILNE")
             if st.form_submit_button("💾 Zapisz"):
@@ -204,7 +214,7 @@ with st.sidebar:
                     dane["w_realizacji"].append({"klient":kl,"termin":tm,"opis":op,"szczegoly":sz,"auto":auto,"kurs":kurs,"pilne":p,"status":"W produkcji","data_p":datetime.now().strftime("%d.%m %H:%M"),"autor":st.session_state.user})
                     zapisz_dane(dane); st.rerun()
         elif typ == "Dostawa (PZ)":
-            ds = st.text_input("🏢 Dostawca"); tm = st.text_input("📅 Data"); op = st.text_area("📦 Co przyjeżdża?")
+            ds = st.text_input("🏢 Dostawca"); tm = st.text_input("📅 Data"); op = st.text_area("📦 Zawartość")
             if st.form_submit_button("💾 Zapisz"):
                 if ds: dane["przyjecia"].append({"dostawca":ds,"termin":tm,"towar":op,"data_p":datetime.now().strftime("%d.%m %H:%M"),"autor":st.session_state.user}); zapisz_dane(dane); st.rerun()
         else:
@@ -241,7 +251,8 @@ for i in range(7):
         grupy = {}
         for z in dane["w_realizacji"]:
             try:
-                zd, zm = map(int, z.get('termin','').split('.')[:2])
+                parts = z.get('termin','').split('.')
+                zd, zm = int(parts[0]), int(parts[1])
                 if zd == dv and zm == mv:
                     k = (z.get('auto','Brak'), z.get('kurs',1))
                     if k not in grupy: grupy[k] = []
@@ -258,17 +269,17 @@ for i in range(7):
         
         for p in dane["przyjecia"]:
             try:
-                pd, pm = map(int, p.get('termin','').split('.')[:2])
+                parts = p.get('termin','').split('.')
+                pd, pm = int(parts[0]), int(parts[1])
                 if pd == dv and pm == mv:
-                    tow_s = str(p.get('towar','')).replace('"', '&quot;')
-                    st.markdown(f"<div class='cal-entry-in' title='{tow_s}'>P: {p.get('dostawca')}</div>", unsafe_allow_html=True)
+                    st.markdown(f"<div class='cal-entry-in' title='{str(p.get('towar','')).replace('\"','&quot;')}'>P: {p.get('dostawca')}</div>", unsafe_allow_html=True)
             except: pass
         for d in dane["dyspozycje"]:
             try:
-                dd, dm = map(int, d.get('termin','').split('.')[:2])
+                parts = d.get('termin','').split('.')
+                dd, dm = int(parts[0]), int(parts[1])
                 if dd == dv and dm == mv:
-                    op_s = str(d.get('opis','')).replace('"', '&quot;')
-                    st.markdown(f"<div class='cal-entry-task' title='{op_s}'>D: {d.get('tytul')}</div>", unsafe_allow_html=True)
+                    st.markdown(f"<div class='cal-entry-task' title='{str(d.get('opis','')).replace('\"','&quot;')}'>D: {d.get('tytul')}</div>", unsafe_allow_html=True)
             except: pass
 
 # --- 7. TABELE REALIZACJI ---
@@ -311,7 +322,7 @@ with t_log:
         if not dane["przyjecia"]: st.info("Brak aktywnych dostaw.")
         else:
             hc = st.columns([2.0, 1.2, 5.0, 1.2, 0.6])
-            hc[0].markdown('<div class="label-text">Dostawca</div>', unsafe_allow_html=True); hc[1].markdown('<div class="label-text">Termin</div>', unsafe_allow_html=True); hc[2].markdown('<div class="label-text">Szczegóły / Edycja</div>', unsafe_allow_html=True); hc[3].markdown('<div class="label-text">Akcja</div>', unsafe_allow_html=True)
+            hc[0].markdown('<div class="label-text">Dostawca</div>', unsafe_allow_html=True); hc[1].markdown('<div class="label-text">Termin</div>', unsafe_allow_html=True); hc[2].markdown('<div class="label-text">Szczegóły</div>', unsafe_allow_html=True); hc[3].markdown('<div class="label-text">Akcja</div>', unsafe_allow_html=True)
             last_l = None
             for i, p in enumerate(dane["przyjecia"]):
                 if search and search not in str(p).lower(): continue
@@ -319,7 +330,7 @@ with t_log:
                     st.markdown(f"<div class='table-group-header'>📅 {p.get('termin')} | Dostawy towarów</div>", unsafe_allow_html=True); last_l = p.get('termin')
                 c = st.columns([2.0, 1.2, 5.0, 1.2, 0.6]); c[0].write(f"**{p.get('dostawca')}**"); c[1].write(p.get('termin'))
                 p_id = f"p_{i}_{p.get('data_p')}".replace(':','').replace(' ','_')
-                with c[2].popover("Menu"):
+                with c[2].popover("Edytuj"):
                     nt = st.text_input("Data", p.get('termin'), key=f"pt_{p_id}"); no = st.text_area("Towar", p.get('towar',''), key=f"po_{p_id}")
                     if st.button("Zapisz", key=f"ps_{p_id}"): dane["przyjecia"][i].update({"termin":nt,"towar":no}); zapisz_dane(dane); st.rerun()
                 if c[3].button("OK", key=f"pok_{p_id}"): dane["przyjecia_historia"].append(dane["przyjecia"].pop(i)); zapisz_dane(dane); st.rerun()
@@ -332,7 +343,7 @@ with t_dysp:
         if not dane["dyspozycje"]: st.info("Brak aktywnych zadań.")
         else:
             hc = st.columns([2.0, 1.2, 5.0, 1.2, 0.6])
-            hc[0].markdown('<div class="label-text">Tytuł</div>', unsafe_allow_html=True); hc[1].markdown('<div class="label-text">Termin</div>', unsafe_allow_html=True); hc[2].markdown('<div class="label-text">Opis / Edycja</div>', unsafe_allow_html=True); hc[3].markdown('<div class="label-text">Akcja</div>', unsafe_allow_html=True)
+            hc[0].markdown('<div class="label-text">Tytuł</div>', unsafe_allow_html=True); hc[1].markdown('<div class="label-text">Termin</div>', unsafe_allow_html=True); hc[2].markdown('<div class="label-text">Menu</div>', unsafe_allow_html=True); hc[3].markdown('<div class="label-text">Akcja</div>', unsafe_allow_html=True)
             last_d = None
             for i, d in enumerate(dane["dyspozycje"]):
                 if search and search not in str(d).lower(): continue
