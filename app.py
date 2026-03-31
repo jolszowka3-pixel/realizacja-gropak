@@ -9,7 +9,7 @@ st.set_page_config(page_title="GROPAK ERP", layout="wide")
 
 st.markdown("""
     <style>
-    .stButton>button { 
+    .stButton>button, .stFormSubmitButton>button { 
         width: 100%; border-radius: 6px; min-height: 32px !important; height: 32px !important; 
         font-size: 12px; font-weight: 600; transition: all 0.2s ease-in-out;
         border: 1px solid #ced4da; padding: 0 10px; line-height: 1; box-shadow: 0 1px 2px rgba(0,0,0,0.05);
@@ -57,14 +57,14 @@ PLIK_DANYCH = "baza_gropak_v3.json"
 def posortuj_dane(dane):
     """Funkcja układająca zlecenia od najbliższej daty"""
     def sort_key(item):
-        pilne = 0 if item.get('pilne') else 1 # Pilne idą na górę
+        pilne = 0 if item.get('pilne') else 1 
         try:
             parts = str(item.get('termin', '')).strip().split('.')
             if len(parts) >= 2:
                 d, m = int(parts[0]), int(parts[1])
-                y = int(parts[2]) if len(parts) > 2 else 2026
+                y = int(parts[2]) if len(parts) > 2 else datetime.now().year
                 return (0, y, m, d, pilne)
-            return (1, 9999, 99, 99, pilne) # Brak poprawnej daty ląduje na dole
+            return (1, 9999, 99, 99, pilne) 
         except:
             return (1, 9999, 99, 99, pilne)
 
@@ -86,12 +86,12 @@ def wczytaj_dane():
                 d = json.load(f)
                 for k, v in default_dane.items():
                     if k not in d: d[k] = v
-                return posortuj_dane(d) # Sortowanie od razu po wczytaniu pliku!
+                return posortuj_dane(d) 
         except: pass
     return default_dane
 
 def zapisz_dane(dane):
-    dane = posortuj_dane(dane) # Sortowanie tuż przed zapisem
+    dane = posortuj_dane(dane) 
     with open(PLIK_DANYCH, "w", encoding="utf-8") as f:
         json.dump(dane, f, indent=4)
 
@@ -103,12 +103,17 @@ if not st.session_state.user:
     st.subheader("GROPAK ERP - Logowanie")
     c1, _ = st.columns([1, 2])
     with c1:
-        u = st.text_input("Użytkownik")
-        p = st.text_input("Hasło", type="password")
-        if st.button("Zaloguj"):
-            if u in dane["uzytkownicy"] and dane["uzytkownicy"][u] == p:
-                st.session_state.user = u; st.rerun()
-            else: st.error("Błąd logowania")
+        # Formularz pozwala na zatwierdzenie logowania klawiszem Enter
+        with st.form("login_form"):
+            u = st.text_input("Użytkownik")
+            p = st.text_input("Hasło", type="password")
+            submitted = st.form_submit_button("Zaloguj")
+            if submitted:
+                if u in dane["uzytkownicy"] and dane["uzytkownicy"][u] == p:
+                    st.session_state.user = u
+                    st.rerun()
+                else: 
+                    st.error("Błąd logowania")
     st.stop()
 
 # --- 4. PANEL BOCZNY ---
