@@ -305,18 +305,29 @@ for i, date in enumerate(dates_in_week):
             status = it.get('status', 'W produkcji')
             css_class = "cal-entry-ready" if status == "Gotowe" else "cal-entry-out"
             prefix = "✅ " if status == "Gotowe" else ""
-            tooltip = f"Status: {status}&#10;Spec: {it.get('opis','')}&#10;Ilości: {it.get('szczegoly','')}"
+            
+            # FILTRY BEZPIECZEŃSTWA DO TOOLTIPÓW (Naprawia rozjeżdżający się kalendarz)
+            opis_safe = str(it.get('opis','')).replace('"', '&quot;').replace('\n', '&#10;')
+            szczeg_safe = str(it.get('szczegoly','')).replace('"', '&quot;').replace('\n', '&#10;')
+            
+            tooltip = f"Status: {status}&#10;Spec: {opis_safe}&#10;Ilości: {szczeg_safe}"
             html_calendar += f'<div class="{css_class}" title="{tooltip}">{p_m}{prefix}{it.get("klient","-")}</div>'
         
         if tr != "Brak": html_calendar += '</div>'
 
     for p in dane["przyjecia"]:
         pd, pm = parse_d(p.get('termin', ''))
-        if pd == dv and pm == mv: html_calendar += f'<div class="cal-entry-in">P: {p.get("dostawca","-")}</div>'
+        if pd == dv and pm == mv:
+            # Filtr dla dostaw
+            towar_safe = str(p.get('towar','')).replace('"', '&quot;').replace('\n', '&#10;')
+            html_calendar += f'<div class="cal-entry-in" title="{towar_safe}">P: {p.get("dostawca","-")}</div>'
             
     for d in dane["dyspozycje"]:
         dd, dm = parse_d(d.get('termin', ''))
-        if dd == dv and dm == mv: html_calendar += f'<div class="cal-entry-task">D: {d.get("tytul","-")}</div>'
+        if dd == dv and dm == mv:
+            # Filtr dla dyspozycji
+            opis_task_safe = str(d.get('opis','')).replace('"', '&quot;').replace('\n', '&#10;')
+            html_calendar += f'<div class="cal-entry-task" title="{opis_task_safe}">D: {d.get("tytul","-")}</div>'
             
     html_calendar += '</div>'
 html_calendar += '</div>'
@@ -363,7 +374,10 @@ with t_prod:
                 
                 status = z.get('status', 'W produkcji')
                 b_status = '<span class="badge-status-ready">✅ GOTOWE</span>' if status == 'Gotowe' else '<span class="badge-status-prod">⏳ PRODUKCJA</span>'
-                c[0].markdown(f"**{z.get('klient')}** {'🔥' if z.get('pilne') else ''} <br>{b_status}", unsafe_allow_html=True)
+                
+                # Zabezpieczony wpis czy pilne
+                pilne_mark = '🔥' if z.get('pilne') else ''
+                c[0].markdown(f"**{z.get('klient')}** {pilne_mark} <br>{b_status}", unsafe_allow_html=True)
                 
                 c[1].write(f"{z.get('termin')}")
                 c[2].write(f"{z.get('data_p')}")
@@ -420,7 +434,9 @@ with t_log:
             for i, p in enumerate(dane["przyjecia"]):
                 if search and search not in str(p).lower(): continue
                 c = st.columns([1.6, 1.0, 1.0, 3.8, 1.1, 0.5])
-                c[0].write(f"**{p.get('dostawca')}** {'🔥' if p.get('pilne') else ''}")
+                
+                pilne_mark_p = '🔥' if p.get('pilne') else ''
+                c[0].write(f"**{p.get('dostawca')}** {pilne_mark_p}")
                 
                 c[1].write(f"{p.get('termin', '-')}")
                 c[2].write(f"{p.get('data_p')}")
@@ -452,7 +468,9 @@ with t_dysp:
             for i, d in enumerate(dane["dyspozycje"]):
                 if search and search not in str(d).lower(): continue
                 c = st.columns([1.6, 1.0, 1.0, 3.8, 1.1, 0.5])
-                c[0].write(f"**{d.get('tytul')}** {'🔥' if d.get('pilne') else ''}")
+                
+                pilne_mark_d = '🔥' if d.get('pilne') else ''
+                c[0].write(f"**{d.get('tytul')}** {pilne_mark_d}")
                 
                 c[1].write(f"{d.get('termin', '-')}")
                 c[2].write(f"{d.get('data_p')}")
