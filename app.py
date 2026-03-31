@@ -46,6 +46,9 @@ st.markdown("""
     
     .badge-urgent { background-color: #dc3545; color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold; margin-left: 5px; }
     .label-text { font-size: 11px; color: #6c757d; font-weight: 700; text-transform: uppercase; margin-bottom: 5px; }
+    
+    /* Wyraźniejsze główne zakładki */
+    button[data-baseweb="tab"] { font-size: 16px !important; font-weight: 600 !important; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -186,111 +189,114 @@ for i, date in enumerate(dates_in_week):
                 p_mark = "🔥 " if ds.get('pilne') else ""
                 st.markdown(f'<div class="cal-entry-task">{p_mark}D: {ds.get("tytul", "-")}</div>', unsafe_allow_html=True)
 
-# --- 7. TABELE REALIZACJI ---
+# --- 7. TABELE REALIZACJI (W GŁÓWNYCH ZAKŁADKACH) ---
 st.markdown('<div class="section-header">Tabele Realizacji</div>', unsafe_allow_html=True)
 search = st.text_input("🔍 Wyszukaj (klient, dostawca, opis...)", "").lower()
 
-# 7.1 PRODUKCJA
-st.markdown('**Zlecenia Produkcyjne**')
-tp1, tp2 = st.tabs(["Aktywne Zlecenia", "Zrealizowane"])
-with tp1:
-    if not dane["w_realizacji"]: st.info("Brak aktywnych zleceń.")
-    else:
-        st.markdown('<div style="display: flex; padding-left: 5px;"><div class="label-text" style="width: 16%;">Klient</div><div class="label-text" style="width: 13%;">Termin</div><div class="label-text" style="width: 13%;">Dodano</div><div class="label-text">Specyfikacja</div></div>', unsafe_allow_html=True)
-        for i, z in enumerate(dane["w_realizacji"]):
-            klient = str(z.get('klient', 'Brak'))
-            opis = str(z.get('opis', ''))
-            if search and search not in klient.lower() and search not in opis.lower(): continue
-            
-            c = st.columns([1.5, 1.2, 1.2, 4.5, 0.8, 0.4])
-            b = '<span class="badge-urgent">PILNE</span>' if z.get('pilne') else ''
-            c[0].markdown(f"**{klient}** {b}", unsafe_allow_html=True)
-            
-            nt = c[1].text_input("T", value=z.get('termin', ''), key=f"z_t_{i}", label_visibility="collapsed")
-            if nt != z.get('termin', ''): dane["w_realizacji"][i]['termin'] = nt; zapisz_dane(dane); st.rerun()
-            
-            c[2].write(f"{z.get('data_p', '-')} ({z.get('autor', 'brak')})")
-            
-            with c[3].popover("Szczegóły"):
-                no = st.text_area("Edytuj", value=opis, key=f"z_o_{i}")
-                if st.button("Zapisz", key=f"z_s_{i}"): dane["w_realizacji"][i]['opis'] = no; zapisz_dane(dane); st.rerun()
-            
-            if c[4].button("GOTOWE", key=f"z_g_{i}"):
-                z["data_k"] = datetime.now().strftime("%d.%m %H:%M"); z["zamknal"] = st.session_state.user
-                dane["zrealizowane"].append(dane["w_realizacji"].pop(i)); zapisz_dane(dane); st.rerun()
-            if c[5].button("X", key=f"z_x_{i}"): 
-                dane["w_realizacji"].pop(i); zapisz_dane(dane); st.rerun()
+# Utworzenie 3 głównych zakładek
+tab_prod, tab_log, tab_dysp = st.tabs(["🏭 Zlecenia Produkcyjne", "🚚 Przyjęcia Towaru (PZ)", "📋 Dyspozycje Dodatkowe"])
 
-with tp2: 
-    if dane["zrealizowane"]: st.dataframe(pd.DataFrame(dane["zrealizowane"]).iloc[::-1], use_container_width=True)
-    else: st.info("Brak historii.")
+# 7.1 PRODUKCJA
+with tab_prod:
+    tp1, tp2 = st.tabs(["Aktywne Zlecenia", "Zrealizowane"])
+    with tp1:
+        if not dane["w_realizacji"]: st.info("Brak aktywnych zleceń.")
+        else:
+            st.markdown('<div style="display: flex; padding-left: 5px;"><div class="label-text" style="width: 16%;">Klient</div><div class="label-text" style="width: 13%;">Termin</div><div class="label-text" style="width: 13%;">Dodano</div><div class="label-text">Specyfikacja</div></div>', unsafe_allow_html=True)
+            for i, z in enumerate(dane["w_realizacji"]):
+                klient = str(z.get('klient', 'Brak'))
+                opis = str(z.get('opis', ''))
+                if search and search not in klient.lower() and search not in opis.lower(): continue
+                
+                c = st.columns([1.5, 1.2, 1.2, 4.5, 0.8, 0.4])
+                b = '<span class="badge-urgent">PILNE</span>' if z.get('pilne') else ''
+                c[0].markdown(f"**{klient}** {b}", unsafe_allow_html=True)
+                
+                nt = c[1].text_input("T", value=z.get('termin', ''), key=f"z_t_{i}", label_visibility="collapsed")
+                if nt != z.get('termin', ''): dane["w_realizacji"][i]['termin'] = nt; zapisz_dane(dane); st.rerun()
+                
+                c[2].write(f"{z.get('data_p', '-')} ({z.get('autor', 'brak')})")
+                
+                with c[3].popover("Szczegóły"):
+                    no = st.text_area("Edytuj", value=opis, key=f"z_o_{i}")
+                    if st.button("Zapisz", key=f"z_s_{i}"): dane["w_realizacji"][i]['opis'] = no; zapisz_dane(dane); st.rerun()
+                
+                if c[4].button("GOTOWE", key=f"z_g_{i}"):
+                    z["data_k"] = datetime.now().strftime("%d.%m %H:%M"); z["zamknal"] = st.session_state.user
+                    dane["zrealizowane"].append(dane["w_realizacji"].pop(i)); zapisz_dane(dane); st.rerun()
+                if c[5].button("X", key=f"z_x_{i}"): 
+                    dane["w_realizacji"].pop(i); zapisz_dane(dane); st.rerun()
+
+    with tp2: 
+        if dane["zrealizowane"]: st.dataframe(pd.DataFrame(dane["zrealizowane"]).iloc[::-1], use_container_width=True)
+        else: st.info("Brak historii.")
 
 # 7.2 LOGISTYKA
-st.markdown('**Przyjęcia Towaru (PZ)**')
-tl1, tl2 = st.tabs(["Zaplanowane", "Historia"])
-with tl1:
-    if not dane["przyjecia"]: st.info("Brak dostaw.")
-    else:
-        st.markdown('<div style="display: flex; padding-left: 5px;"><div class="label-text" style="width: 16%;">Dostawca</div><div class="label-text" style="width: 13%;">Termin</div><div class="label-text" style="width: 13%;">Dodano</div><div class="label-text">Szczegóły</div></div>', unsafe_allow_html=True)
-        for i, p in enumerate(dane["przyjecia"]):
-            dostawca = str(p.get('dostawca', 'Brak'))
-            towar = str(p.get('towar', ''))
-            if search and search not in dostawca.lower() and search not in towar.lower(): continue
-            
-            c = st.columns([1.5, 1.2, 1.2, 4.5, 0.8, 0.4])
-            b = '<span class="badge-urgent">PILNE</span>' if p.get('pilne') else ''
-            c[0].markdown(f"**{dostawca}** {b}", unsafe_allow_html=True)
-            
-            nt = c[1].text_input("T", value=p.get('termin', ''), key=f"l_t_{i}", label_visibility="collapsed")
-            if nt != p.get('termin', ''): dane["przyjecia"][i]['termin'] = nt; zapisz_dane(dane); st.rerun()
-            
-            c[2].write(f"{p.get('data_p', '-')} ({p.get('autor', 'brak')})")
-            
-            with c[3].popover("Co w dostawie?"):
-                no = st.text_area("Edytuj", value=towar, key=f"l_o_{i}")
-                if st.button("Zapisz", key=f"l_s_{i}"): dane["przyjecia"][i]['towar'] = no; zapisz_dane(dane); st.rerun()
-            
-            if c[4].button("OK", key=f"l_g_{i}"):
-                p["data_k"] = datetime.now().strftime("%d.%m %H:%M"); p["odebral"] = st.session_state.user
-                dane["przyjecia_historia"].append(dane["przyjecia"].pop(i)); zapisz_dane(dane); st.rerun()
-            if c[5].button("X", key=f"l_x_{i}"): 
-                dane["przyjecia"].pop(i); zapisz_dane(dane); st.rerun()
+with tab_log:
+    tl1, tl2 = st.tabs(["Zaplanowane", "Historia"])
+    with tl1:
+        if not dane["przyjecia"]: st.info("Brak dostaw.")
+        else:
+            st.markdown('<div style="display: flex; padding-left: 5px;"><div class="label-text" style="width: 16%;">Dostawca</div><div class="label-text" style="width: 13%;">Termin</div><div class="label-text" style="width: 13%;">Dodano</div><div class="label-text">Szczegóły</div></div>', unsafe_allow_html=True)
+            for i, p in enumerate(dane["przyjecia"]):
+                dostawca = str(p.get('dostawca', 'Brak'))
+                towar = str(p.get('towar', ''))
+                if search and search not in dostawca.lower() and search not in towar.lower(): continue
+                
+                c = st.columns([1.5, 1.2, 1.2, 4.5, 0.8, 0.4])
+                b = '<span class="badge-urgent">PILNE</span>' if p.get('pilne') else ''
+                c[0].markdown(f"**{dostawca}** {b}", unsafe_allow_html=True)
+                
+                nt = c[1].text_input("T", value=p.get('termin', ''), key=f"l_t_{i}", label_visibility="collapsed")
+                if nt != p.get('termin', ''): dane["przyjecia"][i]['termin'] = nt; zapisz_dane(dane); st.rerun()
+                
+                c[2].write(f"{p.get('data_p', '-')} ({p.get('autor', 'brak')})")
+                
+                with c[3].popover("Co w dostawie?"):
+                    no = st.text_area("Edytuj", value=towar, key=f"l_o_{i}")
+                    if st.button("Zapisz", key=f"l_s_{i}"): dane["przyjecia"][i]['towar'] = no; zapisz_dane(dane); st.rerun()
+                
+                if c[4].button("OK", key=f"l_g_{i}"):
+                    p["data_k"] = datetime.now().strftime("%d.%m %H:%M"); p["odebral"] = st.session_state.user
+                    dane["przyjecia_historia"].append(dane["przyjecia"].pop(i)); zapisz_dane(dane); st.rerun()
+                if c[5].button("X", key=f"l_x_{i}"): 
+                    dane["przyjecia"].pop(i); zapisz_dane(dane); st.rerun()
 
-with tl2: 
-    if dane["przyjecia_historia"]: st.dataframe(pd.DataFrame(dane["przyjecia_historia"]).iloc[::-1], use_container_width=True)
-    else: st.info("Brak historii.")
+    with tl2: 
+        if dane["przyjecia_historia"]: st.dataframe(pd.DataFrame(dane["przyjecia_historia"]).iloc[::-1], use_container_width=True)
+        else: st.info("Brak historii.")
 
 # 7.3 DYSPOZYCJE
-st.markdown('**Dyspozycje Dodatkowe**')
-td1, td2 = st.tabs(["W toku", "Historia"])
-with td1:
-    if not dane["dyspozycje"]: st.info("Brak zadań.")
-    else:
-        st.markdown('<div style="display: flex; padding-left: 5px;"><div class="label-text" style="width: 16%;">Tytuł / Cel</div><div class="label-text" style="width: 13%;">Termin</div><div class="label-text" style="width: 13%;">Dodano</div><div class="label-text">Opis zadania</div></div>', unsafe_allow_html=True)
-        for i, d in enumerate(dane["dyspozycje"]):
-            tytul = str(d.get('tytul', 'Brak'))
-            opis = str(d.get('opis', ''))
-            if search and search not in tytul.lower() and search not in opis.lower(): continue
-            
-            c = st.columns([1.5, 1.2, 1.2, 4.5, 0.8, 0.4])
-            b = '<span class="badge-urgent">PILNE</span>' if d.get('pilne') else ''
-            c[0].markdown(f"**{tytul}** {b}", unsafe_allow_html=True)
-            
-            nt = c[1].text_input("T", value=d.get('termin', ''), key=f"d_t_{i}", label_visibility="collapsed")
-            if nt != d.get('termin', ''): dane["dyspozycje"][i]['termin'] = nt; zapisz_dane(dane); st.rerun()
-            
-            c[2].write(f"{d.get('data_p', '-')} ({d.get('autor', 'brak')})")
-            
-            with c[3].popover("Szczegóły"):
-                no = st.text_area("Edytuj", value=opis, key=f"d_o_{i}")
-                if st.button("Zapisz", key=f"d_s_{i}"): dane["dyspozycje"][i]['opis'] = no; zapisz_dane(dane); st.rerun()
-            
-            if c[4].button("GOTOWE", key=f"d_g_{i}"):
-                d["data_k"] = datetime.now().strftime("%d.%m %H:%M"); d["zamknal"] = st.session_state.user
-                dane["dyspozycje_historia"].append(dane["dyspozycje"].pop(i)); zapisz_dane(dane); st.rerun()
-            if c[5].button("X", key=f"d_x_{i}"): 
-                dane["dyspozycje"].pop(i); zapisz_dane(dane); st.rerun()
+with tab_dysp:
+    td1, td2 = st.tabs(["W toku", "Historia"])
+    with td1:
+        if not dane["dyspozycje"]: st.info("Brak zadań.")
+        else:
+            st.markdown('<div style="display: flex; padding-left: 5px;"><div class="label-text" style="width: 16%;">Tytuł / Cel</div><div class="label-text" style="width: 13%;">Termin</div><div class="label-text" style="width: 13%;">Dodano</div><div class="label-text">Opis zadania</div></div>', unsafe_allow_html=True)
+            for i, d in enumerate(dane["dyspozycje"]):
+                tytul = str(d.get('tytul', 'Brak'))
+                opis = str(d.get('opis', ''))
+                if search and search not in tytul.lower() and search not in opis.lower(): continue
+                
+                c = st.columns([1.5, 1.2, 1.2, 4.5, 0.8, 0.4])
+                b = '<span class="badge-urgent">PILNE</span>' if d.get('pilne') else ''
+                c[0].markdown(f"**{tytul}** {b}", unsafe_allow_html=True)
+                
+                nt = c[1].text_input("T", value=d.get('termin', ''), key=f"d_t_{i}", label_visibility="collapsed")
+                if nt != d.get('termin', ''): dane["dyspozycje"][i]['termin'] = nt; zapisz_dane(dane); st.rerun()
+                
+                c[2].write(f"{d.get('data_p', '-')} ({d.get('autor', 'brak')})")
+                
+                with c[3].popover("Szczegóły"):
+                    no = st.text_area("Edytuj", value=opis, key=f"d_o_{i}")
+                    if st.button("Zapisz", key=f"d_s_{i}"): dane["dyspozycje"][i]['opis'] = no; zapisz_dane(dane); st.rerun()
+                
+                if c[4].button("GOTOWE", key=f"d_g_{i}"):
+                    d["data_k"] = datetime.now().strftime("%d.%m %H:%M"); d["zamknal"] = st.session_state.user
+                    dane["dyspozycje_historia"].append(dane["dyspozycje"].pop(i)); zapisz_dane(dane); st.rerun()
+                if c[5].button("X", key=f"d_x_{i}"): 
+                    dane["dyspozycje"].pop(i); zapisz_dane(dane); st.rerun()
 
-with td2: 
-    if dane["dyspozycje_historia"]: st.dataframe(pd.DataFrame(dane["dyspozycje_historia"]).iloc[::-1], use_container_width=True)
-    else: st.info("Brak historii.")
+    with td2: 
+        if dane["dyspozycje_historia"]: st.dataframe(pd.DataFrame(dane["dyspozycje_historia"]).iloc[::-1], use_container_width=True)
+        else: st.info("Brak historii.")
