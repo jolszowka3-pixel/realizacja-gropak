@@ -17,8 +17,11 @@ st.markdown("""
     }
     
     /* PRZYCISKI KOLOROWE */
-    button:has(div p:contains("GOTOWE")), button:has(div p:contains("OK")), button:contains("GOTOWE"), button:contains("OK") {
+    button:has(div p:contains("WYŚLIJ")), button:contains("WYŚLIJ"), button:has(div p:contains("OK")), button:contains("OK") {
         border: none !important; color: white !important; background-color: #28a745 !important;
+    }
+    button:has(div p:contains("ZROBIONE")), button:contains("ZROBIONE") {
+        border: none !important; color: #212529 !important; background-color: #ffc107 !important;
     }
     button:has(div p:contains("X")), button:contains("X") {
         border: none !important; color: white !important; background-color: #dc3545 !important; padding: 0 !important;
@@ -36,16 +39,17 @@ st.markdown("""
     
     /* GRUPOWANIE W KALENDARZU */
     .transport-group {
-        background-color: #f1f3f5; border: 1px dashed #adb5bd; border-radius: 6px;
+        background-color: #f8f9fa; border: 1px dashed #ced4da; border-radius: 6px;
         padding: 4px; margin-bottom: 8px;
     }
     .transport-group-header {
         font-size: 9px; font-weight: 800; color: #495057; text-transform: uppercase;
-        margin-bottom: 4px; text-align: center; border-bottom: 1px solid #dee2e6;
+        margin-bottom: 4px; text-align: center; border-bottom: 1px solid #dee2e6; padding-bottom: 2px;
     }
     
     /* WPISY W KALENDARZU */
     .cal-entry-out { cursor: help; font-size: 10px; background: #e7f5ff; color: #0056b3; border-left: 3px solid #0056b3; padding: 4px 6px; margin-bottom: 3px; border-radius: 3px; font-weight: 600; }
+    .cal-entry-ready { cursor: help; font-size: 10px; background: #d4edda; color: #155724; border-left: 3px solid #28a745; padding: 4px 6px; margin-bottom: 3px; border-radius: 3px; font-weight: 600; }
     .cal-entry-in { cursor: help; font-size: 10px; background: #f3f9f1; color: #28a745; border-left: 3px solid #28a745; padding: 4px 6px; margin-bottom: 3px; border-radius: 3px; font-weight: 600; }
     .cal-entry-task { cursor: help; font-size: 10px; background: #fff4e6; color: #d9480f; border-left: 3px solid #d9480f; padding: 4px 6px; margin-bottom: 3px; border-radius: 3px; font-weight: 600; }
     
@@ -57,6 +61,11 @@ st.markdown("""
     
     .car-badge { background-color: #343a40; color: white; padding: 2px 5px; border-radius: 4px; font-size: 9.5px; margin-right: 5px; display: inline-block; }
     .badge-urgent { background-color: #dc3545; color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold; margin-left: 5px; }
+    
+    /* STATUSY PRODUKCJI */
+    .badge-status-prod { background-color: #ffc107; color: #212529; padding: 2px 5px; border-radius: 4px; font-size: 9px; font-weight: bold; margin-left: 5px; display: inline-block; margin-bottom: 3px; }
+    .badge-status-ready { background-color: #28a745; color: white; padding: 2px 5px; border-radius: 4px; font-size: 9px; font-weight: bold; margin-left: 5px; display: inline-block; margin-bottom: 3px; }
+    
     .section-header { background-color: #f8f9fa; padding: 12px 15px; border-radius: 6px; margin-bottom: 12px; margin-top: 25px; font-weight: 700; border-left: 5px solid #2b3035; }
     
     div[data-testid="stHorizontalBlock"] { align-items: center !important; }
@@ -69,21 +78,23 @@ PLIK_DANYCH = "baza_gropak_v3.json"
 OPCJE_TRANSPORTU = ["Brak", "Auto 1", "Auto 2", "Transport zewnętrzny", "Odbiór osobisty", "Kurier"]
 
 def posortuj_dane(dane):
-    """Sortowanie: Data -> Transport -> Kurs -> Czy Pilne"""
+    """Sortowanie: Data -> Transport -> Kurs -> Status (gotowe na dół) -> Czy Pilne"""
     def sort_key(item):
         pilne = 0 if item.get('pilne') else 1 
         t_val = str(item.get('auto', 'Brak'))
         t_score = OPCJE_TRANSPORTU.index(t_val) if t_val in OPCJE_TRANSPORTU else 99
         k_score = item.get('kurs', 1)
+        status_score = 1 if item.get('status') == 'Gotowe' else 0 # W produkcji u góry (0), Gotowe na dole (1)
+        
         try:
             parts = str(item.get('termin', '')).strip().split('.')
             if len(parts) >= 2:
                 d, m = int(parts[0]), int(parts[1])
                 y = int(parts[2]) if len(parts) > 2 else datetime.now().year
-                return (0, y, m, d, t_score, k_score, pilne)
-            return (1, 9999, 99, 99, 99, 99, pilne) 
+                return (0, y, m, d, t_score, k_score, status_score, pilne)
+            return (1, 9999, 99, 99, 99, 99, 99, pilne) 
         except:
-            return (1, 9999, 99, 99, 99, 99, pilne)
+            return (1, 9999, 99, 99, 99, 99, 99, pilne)
 
     for k in ["w_realizacji", "przyjecia", "dyspozycje"]:
         if k in dane: dane[k].sort(key=sort_key)
@@ -138,7 +149,12 @@ with st.sidebar:
             p = st.checkbox("🔥 PILNE")
             if st.form_submit_button("💾 Zapisz"):
                 if kl: 
-                    dane["w_realizacji"].append({"klient": kl, "termin": tm, "opis": op, "szczegoly": sz, "auto": auto, "kurs": kurs, "pilne": p, "data_p": datetime.now().strftime("%d.%m %H:%M"), "autor": st.session_state.user})
+                    dane["w_realizacji"].append({
+                        "klient": kl, "termin": tm, "opis": op, "szczegoly": sz, 
+                        "auto": auto, "kurs": kurs, "pilne": p, 
+                        "status": "W produkcji", # DOMYŚLNY STATUS NOWEGO ZAMÓWIENIA
+                        "data_p": datetime.now().strftime("%d.%m %H:%M"), "autor": st.session_state.user
+                    })
                     zapisz_dane(dane); st.rerun()
     elif typ == "Dostawa (PZ)":
         with st.form("f_l", clear_on_submit=True):
@@ -154,11 +170,11 @@ with st.sidebar:
 # --- 5. STATYSTYKI ---
 st.markdown('<div class="section-header">Podsumowanie</div>', unsafe_allow_html=True)
 c_s1, c_s2, c_s3 = st.columns(3)
-c_s1.metric("📦 Zlecenia", len(dane["w_realizacji"]))
-c_s2.metric("🚚 Dostawy", len(dane["przyjecia"]))
+c_s1.metric("📦 Zlecenia (Aktywne)", len(dane["w_realizacji"]))
+c_s2.metric("🚚 Oczekujące Dostawy", len(dane["przyjecia"]))
 c_s3.metric("📋 Dyspozycje", len(dane["dyspozycje"]))
 
-# --- 6. TERMINARZ TYGODNIOWY (Z GRUPOWANIEM) ---
+# --- 6. TERMINARZ TYGODNIOWY ---
 st.markdown('<div class="section-header">Terminarz Tygodniowy</div>', unsafe_allow_html=True)
 if "week_offset" not in st.session_state: st.session_state.week_offset = 0
 c_nav1, c_nav2, c_nav3 = st.columns([1, 4, 1])
@@ -182,7 +198,7 @@ for i, date in enumerate(dates_in_week):
     html_calendar += f'<div class="day-col"><div class="day-header"><div class="day-name">{day_names[i]}</div><div class="day-date">{date.strftime("%d.%m")}</div></div>'
     dv, mv = date.day, date.month
     
-    # Grupowanie zleceń na dany dzień wg transportu
+    # Grupowanie zleceń wg transportu
     grupy_dnia = {}
     for z in dane["w_realizacji"]:
         zd, zm = parse_d(z.get('termin', ''))
@@ -191,7 +207,7 @@ for i, date in enumerate(dates_in_week):
             if key not in grupy_dnia: grupy_dnia[key] = []
             grupy_dnia[key].append(z)
             
-    # Wyświetlanie grup transportowych
+    # Wyświetlanie grup
     for (tr, kr), items in grupy_dnia.items():
         if tr != "Brak":
             label = "🚗 Auto 1" if tr == "Auto 1" else ("🚗 Auto 2" if tr == "Auto 2" else tr)
@@ -200,16 +216,20 @@ for i, date in enumerate(dates_in_week):
         
         for it in items:
             p_m = "🔥 " if it.get('pilne') else ""
-            tooltip = f"Spec: {it.get('opis','')}&#10;Ilości: {it.get('szczegoly','')}"
-            html_calendar += f'<div class="cal-entry-out" title="{tooltip}">{p_m}{it.get("klient","-")}</div>'
+            status = it.get('status', 'W produkcji')
+            css_class = "cal-entry-ready" if status == "Gotowe" else "cal-entry-out"
+            prefix = "✅ " if status == "Gotowe" else ""
+            
+            tooltip = f"Status: {status}&#10;Spec: {it.get('opis','')}&#10;Ilości: {it.get('szczegoly','')}"
+            html_calendar += f'<div class="{css_class}" title="{tooltip}">{p_m}{prefix}{it.get("klient","-")}</div>'
         
         if tr != "Brak": html_calendar += '</div>'
 
-    # Dostawy i Dyspozycje (bez zmian)
     for p in dane["przyjecia"]:
         pd, pm = parse_d(p.get('termin', ''))
         if pd == dv and pm == mv:
             html_calendar += f'<div class="cal-entry-in">P: {p.get("dostawca","-")}</div>'
+            
     for d in dane["dyspozycje"]:
         dd, dm = parse_d(d.get('termin', ''))
         if dd == dv and dm == mv:
@@ -219,19 +239,18 @@ for i, date in enumerate(dates_in_week):
 html_calendar += '</div>'
 st.markdown(html_calendar, unsafe_allow_html=True)
 
-# --- 7. TABELE REALIZACJI (Z NAGŁÓWKAMI GRUP) ---
+# --- 7. TABELE REALIZACJI ---
 st.markdown('<div class="section-header">Tabele Realizacji</div>', unsafe_allow_html=True)
 search = st.text_input("🔍 Wyszukaj...", "").lower()
 t_prod, t_log, t_dysp = st.tabs(["🏭 Produkcja", "🚚 Przyjęcia (PZ)", "📋 Dyspozycje"])
 
 with t_prod:
-    tp1, tp2 = st.tabs(["Aktywne", "Historia"])
+    tp1, tp2 = st.tabs(["Aktywne Zlecenia", "Zrealizowane / Historia"])
     with tp1:
         last_group = None
         for i, z in enumerate(dane["w_realizacji"]):
             if search and search not in str(z).lower(): continue
             
-            # Generowanie nagłówka grupy w tabeli
             current_group = (z.get('termin'), z.get('auto'), z.get('kurs'))
             if current_group != last_group:
                 t_label = z.get('auto') if z.get('auto') != "Brak" else "Bez przypisanego transportu"
@@ -240,11 +259,16 @@ with t_prod:
                 last_group = current_group
 
             c = st.columns([1.5, 1.2, 1.2, 4.5, 0.8, 0.4])
-            c[0].markdown(f"**{z.get('klient')}** {'🔥' if z.get('pilne') else ''}")
+            
+            status = z.get('status', 'W produkcji')
+            b_status = '<span class="badge-status-ready">✅ GOTOWE</span>' if status == 'Gotowe' else '<span class="badge-status-prod">⏳ W PRODUKCJI</span>'
+            c[0].markdown(f"**{z.get('klient')}** {b_status}<br>{'🔥' if z.get('pilne') else ''}", unsafe_allow_html=True)
+            
             nt = c[1].text_input("T", value=z.get('termin'), key=f"zt{i}", label_visibility="collapsed")
             if nt != z.get('termin'): dane["w_realizacji"][i]['termin'] = nt; zapisz_dane(dane); st.rerun()
             c[2].write(f"{z.get('data_p')}")
-            with c[3].popover("Edytuj / Transport"):
+            
+            with c[3].popover("Edytuj"):
                 st.markdown("**Transport:**")
                 na = st.selectbox("Transport:", OPCJE_TRANSPORTU, index=OPCJE_TRANSPORTU.index(z.get('auto','Brak')), key=f"na{i}")
                 nk = st.selectbox("Kurs:", [1,2,3,4,5], index=int(z.get('kurs',1))-1, key=f"nk{i}")
@@ -254,11 +278,21 @@ with t_prod:
                 if st.button("Zapisz zmiany", key=f"zs{i}"):
                     dane["w_realizacji"][i].update({"auto":na, "kurs":nk, "opis":no, "szczegoly":nsz})
                     zapisz_dane(dane); st.rerun()
-            if c[4].button("GOTOWE", key=f"zg{i}"):
-                z["zamknal"] = st.session_state.user; dane["zrealizowane"].append(dane["w_realizacji"].pop(i)); zapisz_dane(dane); st.rerun()
+            
+            # --- ZMIANA: Przycisk ZROBIONE vs WYŚLIJ ---
+            if status != "Gotowe":
+                if c[4].button("ZROBIONE", key=f"zg{i}"):
+                    dane["w_realizacji"][i]['status'] = "Gotowe"
+                    zapisz_dane(dane); st.rerun()
+            else:
+                if c[4].button("WYŚLIJ", key=f"zw{i}"):
+                    z["zamknal"] = st.session_state.user
+                    dane["zrealizowane"].append(dane["w_realizacji"].pop(i))
+                    zapisz_dane(dane); st.rerun()
+                    
             if c[5].button("X", key=f"zx{i}"): dane["w_realizacji"].pop(i); zapisz_dane(dane); st.rerun()
 
-# Pozostałe zakładki (Przyjęcia i Dyspozycje) pozostają bez zmian (standardowa lista)
+# --- Pozostałe zakładki bez zmian ---
 with t_log:
     tl1, tl2 = st.tabs(["Aktywne", "Historia"])
     with tl1:
