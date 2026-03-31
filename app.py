@@ -122,7 +122,6 @@ def wczytaj_dane():
         try:
             with open(PLIK_DANYCH, "r", encoding="utf-8") as f:
                 d = json.load(f)
-                # Naprawa starych haseł do nowego formatu
                 if "uzytkownicy" in d:
                     for u, val in d["uzytkownicy"].items():
                         if isinstance(val, str):
@@ -236,15 +235,30 @@ with st.sidebar:
 
     if is_admin:
         with st.expander("👥 Zarządzanie użytkownikami"):
+            # Sekcja dodawania
+            st.write("**Dodaj nowego:**")
             with st.form("add_u_f", clear_on_submit=True):
-                new_u = st.text_input("Login"); new_p = st.text_input("Hasło")
-                new_r = st.selectbox("Rola:", ["edycja", "wgląd", "admin"])
+                new_u = st.text_input("Login"); new_p = st.text_input("Hasło"); new_r = st.selectbox("Rola:", ["edycja", "wgląd", "admin"])
                 if st.form_submit_button("Dodaj użytkownika"):
                     if new_u: dane["uzytkownicy"][new_u] = {"pass": new_p, "role": new_r}; zapisz_dane(dane); st.rerun()
-            for usr in list(dane["uzytkownicy"].keys()):
+            
+            st.divider()
+            st.write("**Istniejące konta:**")
+            for usr, info in dane["uzytkownicy"].items():
+                c1, c2, c3 = st.columns([2, 1.2, 0.8])
+                c1.write(f"**{usr}**")
+                
+                with c2.popover("Edytuj"):
+                    e_p = st.text_input("Hasło", info["pass"], key=f"up_{usr}")
+                    e_r = st.selectbox("Rola", ["edycja", "wgląd", "admin"], ["edycja", "wgląd", "admin"].index(info["role"]), key=f"ur_{usr}")
+                    if st.button("💾 Zapisz", key=f"us_{usr}"):
+                        dane["uzytkownicy"][usr] = {"pass": e_p, "role": e_r}
+                        zapisz_dane(dane); st.rerun()
+                
                 if usr != "admin":
-                    if st.button(f"Usuń {usr}", key=f"del_{usr}"): del dane["uzytkownicy"][usr]; zapisz_dane(dane); st.rerun()
-        
+                    if c3.button("X", key=f"del_{usr}"):
+                        del dane["uzytkownicy"][usr]; zapisz_dane(dane); st.rerun()
+
         with st.expander("🛠️ Korekta i Przywracanie"):
             kat = st.selectbox("Dział:", ["Produkcja", "Odbiory", "Przyjęcia", "Dyspozycje"])
             if kat == "Produkcja":
@@ -265,7 +279,6 @@ with st.sidebar:
                         dane["odbiory_historia"].pop(i); zapisz_dane(dane); st.rerun()
         st.divider()
 
-    # Formularz dodawania widoczny tylko dla ról z edycją
     if can_edit:
         st.markdown('<div class="sidebar-header">➕ DODAJ NOWY WPIS</div>', unsafe_allow_html=True)
         typ = st.selectbox("Rodzaj:", ["Produkcja", "Odbiór (Powrót)", "Dostawa (PZ)", "Dyspozycja"])
@@ -315,13 +328,12 @@ for i in range(7):
     with cols[i]:
         st.markdown(f"<div class='day-header'><div class='day-name'>{['Pon','Wt','Śr','Czw','Pt','Sob','Nd'][i]}</div><div class='day-date'>{day.strftime('%d.%m')}</div></div>", unsafe_allow_html=True)
         dv, mv = day.day, day.month
-        
         grupy_transp = {}
         for z in dane["w_realizacji"]:
             try:
                 parts = z.get('termin','').split('.'); zd, zm = int(parts[0]), int(parts[1])
                 if zd == dv and zm == mv:
-                    k_tr = (z.get('auto','Brak'), z.get('kurs',1))
+                    k_tr = (z.get('auto','Brak'), z.get('kurs',1)); 
                     if k_tr not in grupy_transp: grupy_transp[k_tr] = {"prod": [], "odb": []}
                     grupy_transp[k_tr]["prod"].append(z)
             except: pass
@@ -329,11 +341,10 @@ for i in range(7):
             try:
                 parts = o.get('termin','').split('.'); zd, zm = int(parts[0]), int(parts[1])
                 if zd == dv and zm == mv:
-                    k_tr = (o.get('auto','Brak'), o.get('kurs',1))
+                    k_tr = (o.get('auto','Brak'), o.get('kurs',1)); 
                     if k_tr not in grupy_transp: grupy_transp[k_tr] = {"prod": [], "odb": []}
                     grupy_transp[k_tr]["odb"].append(o)
             except: pass
-            
         for (tr, kr), content in grupy_transp.items():
             all_ready = all(it.get('status') == 'Gotowe' for it in content["prod"])
             css_cl = "cal-entry-ready" if (all_ready and content["prod"]) else "cal-entry-out"
@@ -345,7 +356,6 @@ for i in range(7):
                 for it in content["odb"]: tooltip += f"• {it.get('miejsce')} ({it.get('towar','')[:30]}...)&#10;"
             st.markdown(f"<div class='{css_cl}' title='{tooltip}'>{label} ({len(content['prod'])+len(content['odb'])})</div>", unsafe_allow_html=True)
             if content["odb"]: st.markdown(f"<div class='cal-entry-return' style='height:3px; margin-top:-4px;'></div>", unsafe_allow_html=True)
-
         for p in dane["przyjecia"]:
             try:
                 parts = p.get('termin','').split('.'); pd, pm = int(parts[0]), int(parts[1])
