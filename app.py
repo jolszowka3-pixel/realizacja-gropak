@@ -123,11 +123,8 @@ dane = wczytaj_dane()
 # --- FUNKCJA GENERUJĄCA PLIK DO DRUKU ---
 def generuj_html_do_druku(z):
     pilne_html = '<div class="print-urgent">🔥 ZLECENIE PILNE 🔥</div>' if z.get('pilne') else ''
-    auto_val = z.get('auto', 'Brak')
-    k_val = z.get('kurs', 1)
-    transport_str = f"{auto_val} / Kurs nr {k_val}" if auto_val in ["Auto 1", "Auto 2"] else auto_val
-    
-    return f"""<!DOCTYPE html><html lang="pl"><head><meta charset="UTF-8"><title>Zlecenie - {z.get('klient', 'Brak')}</title><style>body {{ font-family: 'Arial', sans-serif; padding: 20px; color: #212529; background: white; }} .print-card {{ border: 4px solid #212529; padding: 40px; max-width: 900px; margin: 0 auto; }} .print-title {{ text-align: center; font-size: 32px; font-weight: 900; border-bottom: 4px solid #212529; padding-bottom: 15px; margin-bottom: 30px; text-transform: uppercase; }} .print-row {{ display: flex; margin-bottom: 25px; }} .print-col {{ flex: 1; padding-right: 20px; }} .print-label {{ font-size: 14px; font-weight: 700; color: #6c757d; text-transform: uppercase; margin-bottom: 5px; }} .print-val {{ font-size: 24px; font-weight: 800; }} .print-val-text {{ font-size: 20px; white-space: pre-wrap; font-weight: 500; border: 1px solid #dee2e6; padding: 15px; border-radius: 6px; background-color: #f8f9fa; }} .print-urgent {{ color: #dc3545; border: 5px solid #dc3545; font-size: 28px; font-weight: 900; text-align: center; padding: 15px; margin-bottom: 30px; text-transform: uppercase; letter-spacing: 2px; }} @media print {{ body {{ padding: 0; }} .print-card {{ border: none; padding: 0; max-width: 100%; }} .print-val-text {{ border: 2px solid #000; background-color: transparent; }} }}</style></head><body onload="window.print()"><div class="print-card">{pilne_html}<div class="print-title">Karta Zlecenia Produkcyjnego</div><div class="print-row"><div class="print-col"><div class="print-label">Klient / Firma</div><div class="print-val">{z.get('klient', '-')}</div></div><div class="print-col"><div class="print-label">Termin Realizacji</div><div class="print-val">{z.get('termin', '-')}</div></div></div><div class="print-row"><div class="print-col"><div class="print-label">Transport / Logistyka</div><div class="print-val">{transport_str}</div></div><div class="print-col"><div class="print-label">Data dodania (Kto dodał)</div><div class="print-val" style="font-size: 18px;">{z.get('data_p', '-')} ({z.get('autor', '-')})</div></div></div><div style="margin-bottom: 30px; margin-top: 30px;"><div class="print-label">Specyfikacja Ogólna</div><div class="print-val-text">{z.get('opis', 'Brak specyfikacji')}</div></div><div><div class="print-label">Szczegóły Zamówienia (Ilości, Wymiary)</div><div class="print-val-text">{z.get('szczegoly', 'Brak szczegółów')}</div></div><div style="margin-top: 120px; text-align: right;"><div style="display: inline-block; width: 350px; border-top: 2px solid #000; padding-top: 10px; text-align: center; color: #212529; font-weight: bold; font-size: 16px;">Podpis pracownika (Zrealizowano)</div></div></div></body></html>"""
+    auto_val = z.get('auto', 'Brak'); k_val = z.get('kurs', 1); transport_str = f"{auto_val} / Kurs nr {k_val}" if auto_val in ["Auto 1", "Auto 2"] else auto_val
+    return f"""<!DOCTYPE html><html lang="pl"><head><meta charset="UTF-8"><title>Zlecenie - {z.get('klient', 'Brak')}</title><style>body {{ font-family: 'Arial', sans-serif; padding: 20px; color: #212529; background: white; }} .print-card {{ border: 4px solid #212529; padding: 40px; max-width: 900px; margin: 0 auto; }} .print-title {{ text-align: center; font-size: 32px; font-weight: 900; border-bottom: 4px solid #212529; padding-bottom: 15px; margin-bottom: 30px; text-transform: uppercase; }} .print-row {{ display: flex; margin-bottom: 25px; }} .print-col {{ flex: 1; padding-right: 20px; }} .print-label {{ font-size: 14px; font-weight: 700; color: #6c757d; text-transform: uppercase; margin-bottom: 5px; }} .print-val {{ font-size: 24px; font-weight: 800; }} .print-val-text {{ font-size: 20px; white-space: pre-wrap; font-weight: 500; border: 1px solid #dee2e6; padding: 15px; border-radius: 6px; background-color: #f8f9fa; }} .print-urgent {{ color: #dc3545; border: 5px solid #dc3545; font-size: 28px; font-weight: 900; text-align: center; padding: 15px; margin-bottom: 30px; text-transform: uppercase; letter-spacing: 2px; }} @media print {{ body {{ padding: 0; }} .print-card {{ border: none; padding: 0; max-width: 100%; }} .print-val-text {{ border: 2px solid #000; background-color: transparent; }} }}</style></head><body onload="window.print()"><div class="print-card">{pilne_html}<div class="print-title">Karta Zlecenia Produkcyjnego</div><div class="print-row"><div class="print-col"><div class="print-label">Klient / Firma</div><div class="print-val">{z.get('klient', '-')}</div></div><div class="print-col"><div class="print-label">Termin Realizacji</div><div class="print-val">{z.get('termin', '-')}</div></div></div><div class="print-row"><div class="print-col"><div class="print-label">Transport / Logistyka</div><div class="print-val">{transport_str}</div></div><div class="print-col"><div class="print-label">Data dodania</div><div class="print-val" style="font-size: 18px;">{z.get('data_p', '-')} ({z.get('autor', '-')})</div></div></div><div style="margin-bottom: 30px; margin-top: 30px;"><div class="print-label">Specyfikacja Ogólna</div><div class="print-val-text">{z.get('opis', 'Brak specyfikacji')}</div></div><div><div class="print-label">Szczegóły Zamówienia (Ilości, Wymiary)</div><div class="print-val-text">{z.get('szczegoly', 'Brak szczegółów')}</div></div><div style="margin-top: 120px; text-align: right;"><div style="display: inline-block; width: 350px; border-top: 2px solid #000; padding-top: 10px; text-align: center; color: #212529; font-weight: bold; font-size: 16px;">Podpis pracownika (Zrealizowano)</div></div></div></body></html>"""
 
 # Zmienne sesyjne
 if "print_order" not in st.session_state: st.session_state.print_order = None
@@ -141,15 +138,15 @@ if st.session_state.print_order is not None:
     with col_btn1:
         if st.button("⬅️ Wróć do systemu"): st.session_state.print_order = None; st.rerun()
     with col_btn2:
-        st.info("🖨️ Naciśnij **Ctrl + P** na klawiaturze, aby wydrukować tę kartę. Możesz ją potem przypiąć na tablicy!")
+        st.info("🖨️ Naciśnij **Ctrl + P** na klawiaturze, aby wydrukować tę kartę.")
     st.markdown('</div>', unsafe_allow_html=True)
     pilne_html = '<div class="print-urgent">🔥 ZLECENIE PILNE 🔥</div>' if z.get('pilne') else ''
     auto_val = z.get('auto', 'Brak'); k_val = z.get('kurs', 1); transport_str = f"{auto_val} / Kurs nr {k_val}" if auto_val in ["Auto 1", "Auto 2"] else auto_val
-    html_karta = f"""<div class="print-card">{pilne_html}<div class="print-title">Karta Zlecenia Produkcyjnego</div><div class="print-row"><div class="print-col"><div class="print-label">Klient / Firma</div><div class="print-val">{z.get('klient', '-')}</div></div><div class="print-col"><div class="print-label">Termin Realizacji</div><div class="print-val">{z.get('termin', '-')}</div></div></div><div class="print-row"><div class="print-col"><div class="print-label">Transport / Logistyka</div><div class="print-val">{transport_str}</div></div><div class="print-col"><div class="print-label">Data dodania (Kto dodał)</div><div class="print-val" style="font-size: 20px;">{z.get('data_p', '-')} ({z.get('autor', '-')})</div></div></div><hr style="border-top: 3px dashed #dee2e6; margin: 30px 0;"><div style="margin-bottom: 30px;"><div class="print-label">Specyfikacja Ogólna</div><div class="print-val-text">{z.get('opis', 'Brak specyfikacji')}</div></div><div><div class="print-label">Szczegóły Zamówienia (Ilości, Wymiary)</div><div class="print-val-text">{z.get('szczegoly', 'Brak szczegółów')}</div></div><div style="margin-top: 100px; text-align: right;"><div style="display: inline-block; width: 300px; border-top: 2px solid #000; padding-top: 10px; text-align: center; color: #212529; font-weight: bold; font-size: 16px;">Podpis pracownika (Zrobione)</div></div></div>"""
+    html_karta = f"""<div class="print-card">{pilne_html}<div class="print-title">Karta Zlecenia Produkcyjnego</div><div class="print-row"><div class="print-col"><div class="print-label">Klient / Firma</div><div class="print-val">{z.get('klient', '-')}</div></div><div class="print-col"><div class="print-label">Termin Realizacji</div><div class="print-val">{z.get('termin', '-')}</div></div></div><div class="print-row"><div class="print-col"><div class="print-label">Transport / Logistyka</div><div class="print-val">{transport_str}</div></div><div class="print-col"><div class="print-label">Data dodania</div><div class="print-val" style="font-size: 20px;">{z.get('data_p', '-')} ({z.get('autor', '-')})</div></div></div><hr style="border-top: 3px dashed #dee2e6; margin: 30px 0;"><div style="margin-bottom: 30px;"><div class="print-label">Specyfikacja Ogólna</div><div class="print-val-text">{z.get('opis', 'Brak specyfikacji')}</div></div><div><div class="print-label">Szczegóły Zamówienia</div><div class="print-val-text">{z.get('szczegoly', 'Brak szczegółów')}</div></div><div style="margin-top: 100px; text-align: right;"><div style="display: inline-block; width: 300px; border-top: 2px solid #000; padding-top: 10px; text-align: center; color: #212529; font-weight: bold; font-size: 16px;">Podpis pracownika</div></div></div>"""
     st.markdown(html_karta, unsafe_allow_html=True)
     st.stop()  
 
-# --- 3. SYSTEM LOGOWANIA (NOWY EKRAN Z LOGO) ---
+# --- 3. SYSTEM LOGOWANIA ---
 if "user" not in st.session_state: st.session_state.user = None
 if not st.session_state.user:
     st.markdown('<style>[data-testid="stSidebar"] {display: none;}</style>', unsafe_allow_html=True)
@@ -174,7 +171,6 @@ with st.sidebar:
     try: st.image("logo.png", use_container_width=True)
     except: pass
     st.markdown("<hr style='margin-top: 5px; margin-bottom: 15px;'>", unsafe_allow_html=True)
-
     st.write(f"Zalogowany: **{st.session_state.user}**")
     if st.button("🚪 Wyloguj"): st.session_state.user = None; st.rerun()
     st.divider()
@@ -214,7 +210,7 @@ with st.sidebar:
     if st.session_state.user == "admin":
         st.divider()
         with st.expander("⚙️ Ustawienia Systemu"):
-            st.warning("Ta akcja wyczyści wszystkie zlecenia. Klienci i konta zostaną nienaruszone.")
+            st.warning("Ta akcja wyczyści wszystkie zlecenia.")
             if st.button("🔥 RESETUJ WSZYSTKIE DANE"):
                 dane["w_realizacji"] = []; dane["zrealizowane"] = []; dane["przyjecia"] = []; dane["przyjecia_historia"] = []; dane["dyspozycje"] = []; dane["dyspozycje_historia"] = []
                 zapisz_dane(dane); st.rerun()
@@ -223,8 +219,7 @@ with st.sidebar:
 st.markdown('<div class="section-header">Podsumowanie</div>', unsafe_allow_html=True)
 c_s1, c_s2, c_s3 = st.columns(3)
 c_s1.metric("📦 Zlecenia (Aktywne)", len(dane["w_realizacji"]))
-c_s2.metric("🚚 Oczekujące Dostawy", len(dane["przyjecia"]))
-c_s3.metric("📋 Dyspozycje", len(dane["dyspozycje"]))
+c_s2.metric("🚚 Oczekujące Dostawy", len(dane["przyjecia"])); c_s3.metric("📋 Dyspozycje", len(dane["dyspozycje"]))
 
 # --- 6. TERMINARZ TYGODNIOWY ---
 st.markdown('<div class="section-header">Terminarz Tygodniowy</div>', unsafe_allow_html=True)
@@ -257,7 +252,10 @@ for i, date in enumerate(dates_in_week):
                 st.markdown(f'<div class="transport-group"><div class="transport-group-header">{label}</div>', unsafe_allow_html=True)
             for it in items:
                 status = it.get('status', 'W produkcji'); css_class = "cal-entry-ready" if status == "Gotowe" else "cal-entry-out"
-                tooltip = f"SPECYFIKACJA:&#10;{str(it.get('opis','')).replace('\"', '&quot;')}&#10;&#10;SZCZEGÓŁY:&#10;{str(it.get('szczegoly','')).replace('\"', '&quot;')}"
+                # Bezpieczne tooltipy
+                op_safe = str(it.get('opis','')).replace('"', '&quot;').replace('\n', ' ')
+                sz_safe = str(it.get('szczegoly','')).replace('"', '&quot;').replace('\n', ' ')
+                tooltip = f"SPECYFIKACJA: {op_safe} | SZCZEGÓŁY: {sz_safe}"
                 st.markdown(f'<div class="{css_class}" title="{tooltip}">{"✅ " if status=="Gotowe" else ""}{it.get("klient","-")}</div>', unsafe_allow_html=True)
             if tr != "Brak": st.markdown('</div>', unsafe_allow_html=True)
 
@@ -286,25 +284,23 @@ with t_prod:
                 status = z.get('status', 'W produkcji'); b_status = '<span class="badge-status-ready">✅ GOTOWE</span>' if status == 'Gotowe' else '<span class="badge-status-prod">⏳ PRODUKCJA</span>'
                 c[0].markdown(f"**{z.get('klient')}** {'🔥' if z.get('pilne') else ''} <br>{b_status}", unsafe_allow_html=True); c[1].write(f"{z.get('termin')}"); c[2].write(f"{z.get('data_p')}")
                 
-                # UNIKALNE KLUCZE OPARTE O DATA_P (Naprawia mieszanie się danych)
-                u_id = z.get('data_p', '').replace(' ', '_').replace(':', '')
+                # UNIKALNY KLUCZ NAPRAWIAJĄCY MIESZANIE DANYCH
+                u_key = z.get('data_p', '').replace(' ', '_').replace(':', '')
                 with c[3].popover("Edytuj / Drukuj"):
-                    st.download_button(label="🖨️ Pobierz Kartę", data=generuj_html_do_druku(z), file_name=f"Karta_{u_id}.html", mime="text/html", key=f"dl_{u_id}")
-                    if st.button("👁️ Podgląd", key=f"pv_{u_id}"): st.session_state.print_order = z; st.rerun()
+                    st.download_button(label="🖨️ Pobierz Kartę", data=generuj_html_do_druku(z), file_name=f"Karta_{u_key}.html", mime="text/html", key=f"dl_{u_key}")
+                    if st.button("👁️ Podgląd", key=f"pv_{u_key}"): st.session_state.print_order = z; st.rerun()
                     st.markdown("---")
-                    nt = st.text_input("Data:", value=z.get('termin', ''), key=f"et_{u_id}")
-                    na = st.selectbox("Transport:", OPCJE_TRANSPORTU, index=OPCJE_TRANSPORTU.index(z.get('auto', 'Brak')), key=f"ea_{u_id}")
-                    nk = st.selectbox("Kurs:", [1,2,3,4,5], index=int(z.get('kurs', 1))-1, key=f"ek_{u_id}")
-                    no = st.text_area("Specyfikacja", value=z.get('opis',''), key=f"eo_{u_id}")
-                    ns = st.text_area("Ilości", value=z.get('szczegoly',''), key=f"es_{u_id}")
-                    if st.button("Zapisz", key=f"eb_{u_id}"): 
-                        dane["w_realizacji"][i].update({"termin":nt,"auto":na,"kurs":nk,"opis":no,"szczegoly":ns})
-                        zapisz_dane(dane); st.rerun()
+                    nt = st.text_input("Data:", value=z.get('termin', ''), key=f"et_{u_key}")
+                    na = st.selectbox("Transport:", OPCJE_TRANSPORTU, index=OPCJE_TRANSPORTU.index(z.get('auto', 'Brak')), key=f"ea_{u_key}")
+                    nk = st.selectbox("Kurs:", [1,2,3,4,5], index=int(z.get('kurs', 1))-1, key=f"ek_{u_key}")
+                    no = st.text_area("Specyfikacja", value=z.get('opis',''), key=f"eo_{u_key}")
+                    ns = st.text_area("Ilości", value=z.get('szczegoly',''), key=f"es_{u_key}")
+                    if st.button("Zapisz", key=f"eb_{u_key}"): dane["w_realizacji"][i].update({"termin":nt,"auto":na,"kurs":nk,"opis":no,"szczegoly":ns}); zapisz_dane(dane); st.rerun()
                 if status != "Gotowe":
-                    if c[4].button("ZROBIONE", key=f"zg_{u_id}"): dane["w_realizacji"][i]['status'] = "Gotowe"; zapisz_dane(dane); st.rerun()
+                    if c[4].button("ZROBIONE", key=f"zg_{u_key}"): dane["w_realizacji"][i]['status'] = "Gotowe"; zapisz_dane(dane); st.rerun()
                 else:
-                    if c[4].button("WYŚLIJ", key=f"zw_{u_id}"): z["zamknal"] = st.session_state.user; dane["zrealizowane"].append(dane["w_realizacji"].pop(i)); zapisz_dane(dane); st.rerun()
-                if c[5].button("X", key=f"zx_{u_id}"): dane["w_realizacji"].pop(i); zapisz_dane(dane); st.rerun()
+                    if c[4].button("WYŚLIJ", key=f"zw_{u_key}"): z["zamknal"] = st.session_state.user; dane["zrealizowane"].append(dane["w_realizacji"].pop(i)); zapisz_dane(dane); st.rerun()
+                if c[5].button("X", key=f"zx_{u_key}"): dane["w_realizacji"].pop(i); zapisz_dane(dane); st.rerun()
     with tp2:
         if dane["zrealizowane"]: st.dataframe(dane["zrealizowane"][::-1], use_container_width=True)
 
@@ -312,20 +308,20 @@ with t_log:
     for i, p in enumerate(dane["przyjecia"]):
         c = st.columns([1.6, 1.0, 1.0, 3.8, 1.1, 0.5])
         c[0].write(f"**{p.get('dostawca')}**"); c[1].write(f"{p.get('termin', '-')}"); c[2].write(f"{p.get('data_p')}")
-        p_id = p.get('data_p', '').replace(' ', '_').replace(':', '')
+        p_key = p.get('data_p', '').replace(' ', '_').replace(':', '')
         with c[3].popover("Szczegóły"):
-            nt = st.text_input("Data:", value=p.get('termin', ''), key=f"lt_{p_id}"); no = st.text_area("Towar:", value=p.get('towar',''), key=f"lo_{p_id}")
-            if st.button("Zapisz", key=f"ls_{p_id}"): dane["przyjecia"][i].update({"termin":nt,"towar":no}); zapisz_dane(dane); st.rerun()
-        if c[4].button("OK", key=f"lg_{p_id}"): dane["przyjecia_historia"].append(dane["przyjecia"].pop(i)); zapisz_dane(dane); st.rerun()
-        if c[5].button("X", key=f"lx_{p_id}"): dane["przyjecia"].pop(i); zapisz_dane(dane); st.rerun()
+            nt = st.text_input("Data:", value=p.get('termin', ''), key=f"lt_{p_key}"); no = st.text_area("Towar:", value=p.get('towar',''), key=f"lo_{p_key}")
+            if st.button("Zapisz", key=f"ls_{p_key}"): dane["przyjecia"][i].update({"termin":nt,"towar":no}); zapisz_dane(dane); st.rerun()
+        if c[4].button("OK", key=f"lg_{p_key}"): dane["przyjecia_historia"].append(dane["przyjecia"].pop(i)); zapisz_dane(dane); st.rerun()
+        if c[5].button("X", key=f"lx_{p_key}"): dane["przyjecia"].pop(i); zapisz_dane(dane); st.rerun()
 
 with t_dysp:
     for i, d in enumerate(dane["dyspozycje"]):
         c = st.columns([1.6, 1.0, 1.0, 3.8, 1.1, 0.5])
         c[0].write(f"**{d.get('tytul')}**"); c[1].write(f"{d.get('termin', '-')}"); c[2].write(f"{d.get('data_p')}")
-        d_id = d.get('data_p', '').replace(' ', '_').replace(':', '')
+        d_key = d.get('data_p', '').replace(' ', '_').replace(':', '')
         with c[3].popover("Edytuj"):
-            nt = st.text_input("Termin:", value=d.get('termin', ''), key=f"dt_{d_id}"); no = st.text_area("Opis:", value=d.get('opis',''), key=f"do_{d_id}")
-            if st.button("Zapisz", key=f"ds_{d_id}"): dane["dyspozycje"][i].update({"termin":nt,"opis":no}); zapisz_dane(dane); st.rerun()
-        if c[4].button("GOTOWE", key=f"dg_{d_id}"): dane["dyspozycje_historia"].append(dane["dyspozycje"].pop(i)); zapisz_dane(dane); st.rerun()
-        if c[5].button("X", key=f"dx_{d_id}"): dane["dyspozycje"].pop(i); zapisz_dane(dane); st.rerun()
+            nt = st.text_input("Termin:", value=d.get('termin', ''), key=f"dt_{d_key}"); no = st.text_area("Opis:", value=d.get('opis',''), key=f"do_{d_key}")
+            if st.button("Zapisz", key=f"ds_{d_key}"): dane["dyspozycje"][i].update({"termin":nt,"opis":no}); zapisz_dane(dane); st.rerun()
+        if c[4].button("GOTOWE", key=f"dg_{d_key}"): dane["dyspozycje_historia"].append(dane["dyspozycje"].pop(i)); zapisz_dane(dane); st.rerun()
+        if c[5].button("X", key=f"dx_{d_key}"): dane["dyspozycje"].pop(i); zapisz_dane(dane); st.rerun()
