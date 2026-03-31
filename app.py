@@ -47,12 +47,11 @@ st.markdown("""
     .badge-urgent { background-color: #dc3545; color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold; margin-left: 5px; }
     .label-text { font-size: 11px; color: #6c757d; font-weight: 700; text-transform: uppercase; margin-bottom: 5px; }
     
-    /* Wyraźniejsze główne zakładki */
     button[data-baseweb="tab"] { font-size: 16px !important; font-weight: 600 !important; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- 2. LOGIKA BAZY DANYCH ---
+# --- 2. LOGIKA BAZY DANYCH I SORTOWANIE ---
 PLIK_DANYCH = "baza_gropak_v3.json"
 
 def wczytaj_dane():
@@ -73,6 +72,21 @@ def wczytaj_dane():
     return default_dane
 
 def zapisz_dane(dane):
+    # --- NOWOŚĆ: Automatyczne sortowanie ---
+    def sort_key(item):
+        pilne_score = 0 if item.get('pilne') else 1 # PILNE lądują wyżej (0 jest przed 1)
+        try:
+            parts = str(item.get('termin', '')).split('.')
+            m, d = int(parts[1]), int(parts[0])
+            return (0, m, d, pilne_score) # Sortuje: miesiąc -> dzień -> czy pilne
+        except:
+            return (1, 99, 99, pilne_score) # Jeśli ktoś nie wpisze daty, spada na sam dół
+
+    if "w_realizacji" in dane: dane["w_realizacji"].sort(key=sort_key)
+    if "przyjecia" in dane: dane["przyjecia"].sort(key=sort_key)
+    if "dyspozycje" in dane: dane["dyspozycje"].sort(key=sort_key)
+    # ---------------------------------------
+
     with open(PLIK_DANYCH, "w", encoding="utf-8") as f:
         json.dump(dane, f, indent=4)
 
@@ -189,11 +203,10 @@ for i, date in enumerate(dates_in_week):
                 p_mark = "🔥 " if ds.get('pilne') else ""
                 st.markdown(f'<div class="cal-entry-task">{p_mark}D: {ds.get("tytul", "-")}</div>', unsafe_allow_html=True)
 
-# --- 7. TABELE REALIZACJI (W GŁÓWNYCH ZAKŁADKACH) ---
+# --- 7. TABELE REALIZACJI ---
 st.markdown('<div class="section-header">Tabele Realizacji</div>', unsafe_allow_html=True)
 search = st.text_input("🔍 Wyszukaj (klient, dostawca, opis...)", "").lower()
 
-# Utworzenie 3 głównych zakładek
 tab_prod, tab_log, tab_dysp = st.tabs(["🏭 Zlecenia Produkcyjne", "🚚 Przyjęcia Towaru (PZ)", "📋 Dyspozycje Dodatkowe"])
 
 # 7.1 PRODUKCJA
