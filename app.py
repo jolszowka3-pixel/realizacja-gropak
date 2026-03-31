@@ -141,9 +141,9 @@ dane = wczytaj_dane()
 def generuj_html_do_druku(z):
     pilne_html = '<div style="color:red; border:4px solid red; padding:10px; text-align:center; font-size:24px; font-weight:bold;">🔥 ZLECENIE PILNE 🔥</div>' if z.get('pilne') else ''
     auto_val = z.get('auto', 'Brak'); k_val = z.get('kurs', 1); transport_str = f"{auto_val} / Kurs nr {k_val}" if auto_val in ["Auto 1", "Auto 2"] else auto_val
-    return f"""<!DOCTYPE html><html lang="pl"><head><meta charset="UTF-8"><style>body{{font-family:sans-serif;padding:30px;}} .card{{border:5px solid black;padding:30px;}} h1{{text-align:center;border-bottom:3px solid black;}} .row{{display:flex;justify-content:space-between;margin-top:20px;font-size:20px;}} .box{{border:1px solid #666;padding:15px;margin-top:20px;min-height:150px;font-size:18px;white-space:pre-wrap;}}</style></head><body onload="window.print()"><div class="card">{pilne_html}<h1>Karta Zlecenia: {z.get('klient')}</h1><div class="row"><div><b>Termin:</b> {z.get('termin')}</div><div><b>Transport:</b> {transport_str}</div></div><p><b>Specyfikacja:</b></p><div class="box">{z.get('opis')}</div><p><b>Ilości:</b></p><div class="box">{z.get('szczegoly')}</div><div style="margin-top:50px;text-align:right;">Podpis: __________________________</div></div></body></html>"""
+    return f"""<!DOCTYPE html><html lang="pl"><head><meta charset="UTF-8"><style>body{{font-family:sans-serif;padding:30px;}} .card{{border:5px solid black;padding:30px;}} h1{{text-align:center;border-bottom:3px solid black;}} .row{{display:flex;justify-content:space-between;margin-top:20px;font-size:20px;}} .box{{border:1px solid #666;padding:15px;margin-top:20px;min-height:150px;font-size:18px;white-space:pre-wrap;}}</style></head><body onload="window.print()"><div class="card">{pilne_html}<h1>Karta Zlecenia: {z.get('klient')}</h1><div class="row"><div><b>Termin:</b> {z.get('termin')}</div><div><b>Transport:</b> {transport_str}</div></div><p><b>Specyfikacja Ogólna:</b></p><div class="box">{z.get('opis')}</div><p><b>Ilości / Szczegóły:</b></p><div class="box">{z.get('szczegoly')}</div><div style="margin-top:50px;text-align:right;">Podpis: __________________________</div></div></body></html>"""
 
-# --- NOWA FUNKCJA: ROZPISKA ZBIORCZA ---
+# --- FUNKCJA: ROZPISKA ZBIORCZA (POPRAWIONA CZYTELNOŚĆ) ---
 def generuj_rozpiske_zbiorcza(data_cel, lista_zlecen):
     html = f"""<!DOCTYPE html><html lang="pl"><head><meta charset="UTF-8"><style>
     body{{font-family:sans-serif;padding:20px;color:#212529;}}
@@ -151,10 +151,18 @@ def generuj_rozpiske_zbiorcza(data_cel, lista_zlecen):
     .transport-block{{margin-bottom:40px; page-break-inside: avoid;}}
     .transport-title{{background:#f8f9fa;padding:12px;font-size:22px;font-weight:bold;border:2px solid #000;text-transform:uppercase;margin-bottom:10px;}}
     table{{width:100%;border-collapse:collapse;margin-bottom:20px;}}
-    th, td{{border:1px solid #000;padding:10px;text-align:left;font-size:14px;}}
+    th, td{{border:1px solid #000;padding:10px;text-align:left;font-size:14px; vertical-align: top;}}
     th{{background:#e9ecef; font-weight:bold;}}
     .pilne{{color:#dc3545;font-weight:900;}}
     .check{{width:40px;text-align:center;font-weight:bold;font-size:20px;}}
+    /* KLUCZOWA POPRAWKA DLA CZYTELNOŚCI LIST */
+    .details-cell {{ 
+        white-space: pre-wrap; 
+        font-family: inherit; 
+        font-size: 15px; 
+        line-height: 1.4;
+        background-color: #fff;
+    }}
     </style></head><body onload="window.print()">
     <div class="h1"><h1>PLAN TRANSPORTU - {data_cel}</h1></div>"""
     
@@ -171,18 +179,18 @@ def generuj_rozpiske_zbiorcza(data_cel, lista_zlecen):
         for (tr, kr), items in grupy.items():
             label = f"{tr} / KURS NR {kr}" if tr in ["Auto 1", "Auto 2"] else tr
             html += f"""<div class="transport-block"><div class="transport-title">🚚 {label}</div>
-            <table><tr><th class="check">OK</th><th>KLIENT</th><th>SPECYFIKACJA</th><th>ILOŚCI / SZCZEGÓŁY</th><th>STATUS</th></tr>"""
+            <table><tr><th class="check">OK</th><th style="width:20%">KLIENT</th><th style="width:25%">SPECYFIKACJA</th><th style="width:45%">ILOŚCI / SZCZEGÓŁY</th><th>STATUS</th></tr>"""
             for it in items:
                 p_m = '<span class="pilne">[🔥 PILNE]</span> ' if it.get('pilne') else ''
-                st_m = "✅ GOTOWE" if it.get('status') == "Gotowe" else "⏳ W PRODUKCJI"
-                html += f"<tr><td class='check'>[ ]</td><td>{p_m}<b>{it.get('klient')}</b></td><td>{it.get('opis','-')}</td><td>{it.get('szczegoly','-')}</td><td>{st_m}</td></tr>"
+                st_m = "✅ GOTOWE" if it.get('status') == "Gotowe" else "⏳ PROD."
+                html += f"<tr><td class='check'>[ ]</td><td>{p_m}<b>{it.get('klient')}</b></td><td class='details-cell'>{it.get('opis','-')}</td><td class='details-cell'>{it.get('szczegoly','-')}</td><td>{st_m}</td></tr>"
             html += "</table></div>"
     html += "</body></html>"
     return html
 
 if "print_order" not in st.session_state: st.session_state.print_order = None
 
-# --- WIDOK DRUKOWANIA (Karta A4) ---
+# --- WIDOK DRUKOWANIA ---
 if st.session_state.print_order is not None:
     z = st.session_state.print_order
     st.markdown('<style>[data-testid="stSidebar"] {display: none;} header {display: none;}</style>', unsafe_allow_html=True)
@@ -304,7 +312,7 @@ for i in range(7):
                     st.markdown(f"<div class='cal-entry-task' title='{str(d.get('opis','')).replace('\"','&quot;')}'>D: {d.get('tytul')}</div>", unsafe_allow_html=True)
             except: pass
 
-# --- 7. CENTRUM ROZPISKI TRANSPORTU (NOWOŚĆ) ---
+# --- 7. CENTRUM ROZPISKI TRANSPORTU ---
 st.markdown('<div class="section-header">Centrum Rozpiski Transportu</div>', unsafe_allow_html=True)
 c_r1, c_r2 = st.columns([1, 2])
 with c_r1:
@@ -317,7 +325,7 @@ with c_r2:
         file_name=f"Rozpiska_{data_do_druku}.html", 
         mime="text/html"
     ):
-        st.success("Rozpiska gotowa do druku!")
+        st.success("Rozpiska gotowa!")
 
 # --- 8. TABELE REALIZACJI ---
 st.markdown('<div class="section-header">Tabele Realizacji</div>', unsafe_allow_html=True)
