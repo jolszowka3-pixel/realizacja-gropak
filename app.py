@@ -49,7 +49,7 @@ div[data-testid="stPopover"] > button { min-height: 32px !important; height: 32p
 .section-header { background-color: #f8f9fa; padding: 12px 15px; border-radius: 6px; margin-bottom: 12px; margin-top: 25px; font-weight: 700; color: #212529; text-transform: uppercase; border-left: 5px solid #2b3035; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
 .sidebar-header { background: linear-gradient(90deg, #1e7e34, #28a745); color: white; padding: 12px; border-radius: 6px; text-align: center; font-weight: 700; font-size: 14px; margin-bottom: 15px; letter-spacing: 1px; }
 
-/* FIX KALENDARZA - SZTYWNE KOLUMNY */
+/* FIX KALENDARZA */
 .day-col { 
     background-color: #ffffff; 
     border: 1px solid #dee2e6; 
@@ -57,7 +57,6 @@ div[data-testid="stPopover"] > button { min-height: 32px !important; height: 32p
     padding: 10px; 
     min-height: 200px;
     width: 100%;
-    overflow: hidden;
 }
 .day-header { text-align: center; border-bottom: 2px solid #343a40; margin-bottom: 12px; padding-bottom: 6px; }
 .day-name { font-weight: 700; font-size: 13px; color: #495057; }
@@ -123,7 +122,7 @@ dane = wczytaj_dane()
 def generuj_html_do_druku(z):
     pilne_html = '<div style="color:red; border:4px solid red; padding:10px; text-align:center; font-size:24px; font-weight:bold;">🔥 ZLECENIE PILNE 🔥</div>' if z.get('pilne') else ''
     auto_val = z.get('auto', 'Brak'); k_val = z.get('kurs', 1); transport_str = f"{auto_val} / Kurs nr {k_val}" if auto_val in ["Auto 1", "Auto 2"] else auto_val
-    return f"""<!DOCTYPE html><html lang="pl"><head><meta charset="UTF-8"><style>body{{font-family:sans-serif;padding:30px;}} .card{{border:5px solid black;padding:30px;}} h1{{text-align:center;border-bottom:3px solid black;}} .row{{display:flex;justify-content:space-between;margin-top:20px;font-size:20px;}} .box{{border:1px solid #666;padding:15px;margin-top:20px;min-height:150px;font-size:18px;white-space:pre-wrap;}}</style></head><body onload="window.print()"><div class="card">{pilne_html}<h1>Karta Zlecenia: {z.get('klient')}</h1><div class="row"><div><b>Termin:</b> {z.get('termin')}</div><div><b>Transport:</b> {transport_str}</div></div><p><b>Specyfikacja:</b></p><div class="box">{z.get('opis')}</div><p><b>Ilości:</b></p><div class="box">{z.get('szczegoly')}</div><div style="margin-top:50px;text-align:right;">Podpis: __________________________</div></div></body></html>"""
+    return f"""<!DOCTYPE html><html lang="pl"><head><meta charset="UTF-8"><style>body{{font-family:sans-serif;padding:30px;}} .card{{border:4px solid black;padding:30px;}} h1{{text-align:center;border-bottom:3px solid black;}} .row{{display:flex;justify-content:space-between;margin-top:20px;font-size:20px;}} .box{{border:1px solid #666;padding:15px;margin-top:20px;min-height:150px;font-size:18px;white-space:pre-wrap;}}</style></head><body onload="window.print()"><div class="card">{pilne_html}<h1>Karta Zlecenia: {z.get('klient')}</h1><div class="row"><div><b>Termin:</b> {z.get('termin')}</div><div><b>Transport:</b> {transport_str}</div></div><p><b>Specyfikacja:</b></p><div class="box">{z.get('opis')}</div><p><b>Ilości:</b></p><div class="box">{z.get('szczegoly')}</div><div style="margin-top:50px;text-align:right;">Podpis: __________________________</div></div></body></html>"""
 
 if "print_order" not in st.session_state: st.session_state.print_order = None
 
@@ -214,6 +213,8 @@ for i in range(7):
     with cols[i]:
         st.markdown(f"<div class='day-header'><div class='day-name'>{['Pon','Wt','Śr','Czw','Pt','Sob','Nd'][i]}</div><div class='day-date'>{day.strftime('%d.%m')}</div></div>", unsafe_allow_html=True)
         dv, mv = day.day, day.month
+        
+        # Produkcja (Grupowana)
         grupy = {}
         for z in dane["w_realizacji"]:
             try:
@@ -232,6 +233,24 @@ for i in range(7):
                 op_s = str(it.get('opis','')).replace('"', '&quot;').replace('\n', ' ')
                 tooltip = f"SPECYFIKACJA: {op_s}"
                 st.markdown(f"<div class='{st_cl}' title='{tooltip}'>{prefix}{it.get('klient')}</div>", unsafe_allow_html=True)
+        
+        # Przyjęcia PZ (NOWE W KALENDARZU)
+        for p in dane["przyjecia"]:
+            try:
+                pd, pm = map(int, p.get('termin','').split('.')[:2])
+                if pd == dv and pm == mv:
+                    towar_s = str(p.get('towar','')).replace('"', '&quot;').replace('\n', ' ')
+                    st.markdown(f"<div class='cal-entry-in' title='{towar_s}'>P: {p.get('dostawca')}</div>", unsafe_allow_html=True)
+            except: pass
+            
+        # Dyspozycje (NOWE W KALENDARZU)
+        for d in dane["dyspozycje"]:
+            try:
+                dd, dm = map(int, d.get('termin','').split('.')[:2])
+                if dd == dv and dm == mv:
+                    opis_s = str(d.get('opis','')).replace('"', '&quot;').replace('\n', ' ')
+                    st.markdown(f"<div class='cal-entry-task' title='{opis_s}'>D: {d.get('tytul')}</div>", unsafe_allow_html=True)
+            except: pass
 
 # --- 7. TABELE REALIZACJI ---
 st.markdown('<div class="section-header">Tabele Realizacji</div>', unsafe_allow_html=True)
