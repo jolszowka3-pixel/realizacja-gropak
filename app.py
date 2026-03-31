@@ -137,14 +137,52 @@ def zapisz_dane(dane):
 
 dane = wczytaj_dane()
 
+# --- FUNKCJE DRUKOWANIA ---
 def generuj_html_do_druku(z):
     pilne_html = '<div style="color:red; border:4px solid red; padding:10px; text-align:center; font-size:24px; font-weight:bold;">🔥 ZLECENIE PILNE 🔥</div>' if z.get('pilne') else ''
     auto_val = z.get('auto', 'Brak'); k_val = z.get('kurs', 1); transport_str = f"{auto_val} / Kurs nr {k_val}" if auto_val in ["Auto 1", "Auto 2"] else auto_val
     return f"""<!DOCTYPE html><html lang="pl"><head><meta charset="UTF-8"><style>body{{font-family:sans-serif;padding:30px;}} .card{{border:5px solid black;padding:30px;}} h1{{text-align:center;border-bottom:3px solid black;}} .row{{display:flex;justify-content:space-between;margin-top:20px;font-size:20px;}} .box{{border:1px solid #666;padding:15px;margin-top:20px;min-height:150px;font-size:18px;white-space:pre-wrap;}}</style></head><body onload="window.print()"><div class="card">{pilne_html}<h1>Karta Zlecenia: {z.get('klient')}</h1><div class="row"><div><b>Termin:</b> {z.get('termin')}</div><div><b>Transport:</b> {transport_str}</div></div><p><b>Specyfikacja:</b></p><div class="box">{z.get('opis')}</div><p><b>Ilości:</b></p><div class="box">{z.get('szczegoly')}</div><div style="margin-top:50px;text-align:right;">Podpis: __________________________</div></div></body></html>"""
 
+# --- NOWA FUNKCJA: ROZPISKA ZBIORCZA ---
+def generuj_rozpiske_zbiorcza(data_cel, lista_zlecen):
+    html = f"""<!DOCTYPE html><html lang="pl"><head><meta charset="UTF-8"><style>
+    body{{font-family:sans-serif;padding:20px;color:#212529;}}
+    .h1{{text-align:center;border-bottom:4px solid #000;padding-bottom:10px;margin-bottom:30px;text-transform:uppercase;}}
+    .transport-block{{margin-bottom:40px; page-break-inside: avoid;}}
+    .transport-title{{background:#f8f9fa;padding:12px;font-size:22px;font-weight:bold;border:2px solid #000;text-transform:uppercase;margin-bottom:10px;}}
+    table{{width:100%;border-collapse:collapse;margin-bottom:20px;}}
+    th, td{{border:1px solid #000;padding:10px;text-align:left;font-size:14px;}}
+    th{{background:#e9ecef; font-weight:bold;}}
+    .pilne{{color:#dc3545;font-weight:900;}}
+    .check{{width:40px;text-align:center;font-weight:bold;font-size:20px;}}
+    </style></head><body onload="window.print()">
+    <div class="h1"><h1>PLAN TRANSPORTU - {data_cel}</h1></div>"""
+    
+    z_dnia = [z for z in lista_zlecen if z.get('termin') == data_cel]
+    grupy = {}
+    for z in z_dnia:
+        key = (z.get('auto', 'Brak'), z.get('kurs', 1))
+        if key not in grupy: grupy[key] = []
+        grupy[key].append(z)
+        
+    if not z_dnia:
+        html += "<h2 style='text-align:center;'>Brak zaplanowanych wysyłek na ten dzień.</h2>"
+    else:
+        for (tr, kr), items in grupy.items():
+            label = f"{tr} / KURS NR {kr}" if tr in ["Auto 1", "Auto 2"] else tr
+            html += f"""<div class="transport-block"><div class="transport-title">🚚 {label}</div>
+            <table><tr><th class="check">OK</th><th>KLIENT</th><th>SPECYFIKACJA</th><th>ILOŚCI / SZCZEGÓŁY</th><th>STATUS</th></tr>"""
+            for it in items:
+                p_m = '<span class="pilne">[🔥 PILNE]</span> ' if it.get('pilne') else ''
+                st_m = "✅ GOTOWE" if it.get('status') == "Gotowe" else "⏳ W PRODUKCJI"
+                html += f"<tr><td class='check'>[ ]</td><td>{p_m}<b>{it.get('klient')}</b></td><td>{it.get('opis','-')}</td><td>{it.get('szczegoly','-')}</td><td>{st_m}</td></tr>"
+            html += "</table></div>"
+    html += "</body></html>"
+    return html
+
 if "print_order" not in st.session_state: st.session_state.print_order = None
 
-# --- WIDOK DRUKOWANIA ---
+# --- WIDOK DRUKOWANIA (Karta A4) ---
 if st.session_state.print_order is not None:
     z = st.session_state.print_order
     st.markdown('<style>[data-testid="stSidebar"] {display: none;} header {display: none;}</style>', unsafe_allow_html=True)
@@ -190,15 +228,15 @@ with st.sidebar:
 
     st.markdown('<div class="sidebar-header">➕ DODAJ NOWY WPIS</div>', unsafe_allow_html=True)
     typ = st.selectbox("Rodzaj:", ["Produkcja", "Dostawa (PZ)", "Dyspozycja"])
-    with st.form("f_add_new", clear_on_submit=True):
+    with st.form("f_add_entry", clear_on_submit=True):
         if typ == "Produkcja":
-            kl = st.text_input("👤 Klient"); tm = st.text_input("📅 Termin (zostaw puste, by zaplanować później)"); op = st.text_area("📝 Specyfikacja"); sz = st.text_area("📦 Ilości"); auto = st.selectbox("Transport:", OPCJE_TRANSPORTU); kurs = st.selectbox("Kurs nr:", [1, 2, 3, 4, 5]); p = st.checkbox("🔥 PILNE")
+            kl = st.text_input("👤 Klient"); tm = st.text_input("📅 Termin (np. 31.03)"); op = st.text_area("📝 Specyfikacja"); sz = st.text_area("📦 Ilości"); auto = st.selectbox("Transport:", OPCJE_TRANSPORTU); kurs = st.selectbox("Kurs nr:", [1, 2, 3, 4, 5]); p = st.checkbox("🔥 PILNE")
             if st.form_submit_button("💾 Zapisz"):
                 if kl: 
                     dane["w_realizacji"].append({"klient":kl,"termin":tm,"opis":op,"szczegoly":sz,"auto":auto,"kurs":kurs,"pilne":p,"status":"W produkcji","data_p":datetime.now().strftime("%d.%m %H:%M"),"autor":st.session_state.user})
                     zapisz_dane(dane); st.rerun()
         elif typ == "Dostawa (PZ)":
-            ds = st.text_input("🏢 Dostawca"); tm = st.text_input("📅 Data"); op = st.text_area("📦 Co przyjeżdża?")
+            ds = st.text_input("🏢 Dostawca"); tm = st.text_input("📅 Data"); op = st.text_area("📦 Zawartość")
             if st.form_submit_button("💾 Zapisz"):
                 if ds: dane["przyjecia"].append({"dostawca":ds,"termin":tm,"towar":op,"data_p":datetime.now().strftime("%d.%m %H:%M"),"autor":st.session_state.user}); zapisz_dane(dane); st.rerun()
         else:
@@ -235,9 +273,7 @@ for i in range(7):
         grupy = {}
         for z in dane["w_realizacji"]:
             try:
-                termin = z.get('termin','').strip()
-                if not termin: continue
-                parts = termin.split('.')
+                parts = z.get('termin','').split('.')
                 zd, zm = int(parts[0]), int(parts[1])
                 if zd == dv and zm == mv:
                     k = (z.get('auto','Brak'), z.get('kurs',1))
@@ -268,15 +304,28 @@ for i in range(7):
                     st.markdown(f"<div class='cal-entry-task' title='{str(d.get('opis','')).replace('\"','&quot;')}'>D: {d.get('tytul')}</div>", unsafe_allow_html=True)
             except: pass
 
-# --- 7. TABELE REALIZACJI ---
+# --- 7. CENTRUM ROZPISKI TRANSPORTU (NOWOŚĆ) ---
+st.markdown('<div class="section-header">Centrum Rozpiski Transportu</div>', unsafe_allow_html=True)
+c_r1, c_r2 = st.columns([1, 2])
+with c_r1:
+    data_do_druku = st.text_input("Podaj datę do rozpiski (np. 31.03)", value=datetime.now().strftime("%d.%m"))
+with c_r2:
+    st.markdown("<br>", unsafe_allow_html=True)
+    if st.download_button(
+        label="🖨️ Pobierz ZBIORCZĄ ROZPISKĘ na ten dzień", 
+        data=generuj_rozpiske_zbiorcza(data_do_druku, dane["w_realizacji"]), 
+        file_name=f"Rozpiska_{data_do_druku}.html", 
+        mime="text/html"
+    ):
+        st.success("Rozpiska gotowa do druku!")
+
+# --- 8. TABELE REALIZACJI ---
 st.markdown('<div class="section-header">Tabele Realizacji</div>', unsafe_allow_html=True)
 search = st.text_input("🔍 Szukaj...", "").lower()
 t_prod, t_log, t_dysp = st.tabs(["🏭 Produkcja", "🚚 Przyjęcia", "📋 Dyspozycje"])
 
 with t_prod:
     tp1, tp_planned, tp2 = st.tabs(["Aktywne", "📂 Do zaplanowania", "Historia"])
-    
-    # Rozdzielamy zlecenia na zaplanowane i niezaplanowane
     z_aktywne = [z for z in dane["w_realizacji"] if str(z.get('termin','')).strip()]
     z_do_zaplanowania = [z for z in dane["w_realizacji"] if not str(z.get('termin','')).strip()]
 
@@ -334,7 +383,7 @@ with t_log:
         if not dane["przyjecia"]: st.info("Brak aktywnych dostaw.")
         else:
             hc = st.columns([2.0, 1.2, 5.0, 1.2, 0.6])
-            hc[0].markdown('<div class="label-text">Dostawca</div>', unsafe_allow_html=True); hc[1].markdown('<div class="label-text">Termin</div>', unsafe_allow_html=True); hc[2].markdown('<div class="label-text">Szczegóły / Edycja</div>', unsafe_allow_html=True); hc[3].markdown('<div class="label-text">Akcja</div>', unsafe_allow_html=True)
+            hc[0].markdown('<div class="label-text">Dostawca</div>', unsafe_allow_html=True); hc[1].markdown('<div class="label-text">Termin</div>', unsafe_allow_html=True); hc[2].markdown('<div class="label-text">Szczegóły</div>', unsafe_allow_html=True); hc[3].markdown('<div class="label-text">Akcja</div>', unsafe_allow_html=True)
             last_l = None
             for i, p in enumerate(dane["przyjecia"]):
                 if search and search not in str(p).lower(): continue
