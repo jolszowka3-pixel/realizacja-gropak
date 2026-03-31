@@ -63,6 +63,10 @@ div[data-testid="stPopover"] > button { min-height: 32px !important; height: 32p
 
 .label-text { font-size: 11px; color: #6c757d; font-weight: 700; text-transform: uppercase; margin-bottom: 5px; border-bottom: 1px solid #dee2e6; padding-bottom: 4px;}
 button[data-baseweb="tab"] { font-size: 16px !important; font-weight: 600 !important; }
+
+/* TWARDE WYRÓWNANIE DO ŚRODKA (Naprawa rozjechanych przycisków) */
+div[data-testid="stHorizontalBlock"] { align-items: center !important; }
+div[data-testid="stHorizontalBlock"] p { margin-bottom: 0 !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -399,7 +403,8 @@ with t_prod:
         if not dane["w_realizacji"]: 
             st.info("Brak aktywnych zleceń.")
         else:
-            hc = st.columns([1.5, 1.2, 1.2, 4.5, 0.8, 0.4])
+            # --- ZMIENIONE PROPORCJE KOLUMN ---
+            hc = st.columns([1.6, 1.0, 1.0, 3.8, 1.1, 0.5])
             hc[0].markdown('<div class="label-text">Klient</div>', unsafe_allow_html=True)
             hc[1].markdown('<div class="label-text">Termin</div>', unsafe_allow_html=True)
             hc[2].markdown('<div class="label-text">Dodano</div>', unsafe_allow_html=True)
@@ -425,19 +430,17 @@ with t_prod:
                     st.markdown(f'<div class="table-group-header">📅 {z.get("termin")} | {t_label}{k_label}</div>', unsafe_allow_html=True)
                     last_group = current_group
 
-                c = st.columns([1.5, 1.2, 1.2, 4.5, 0.8, 0.4])
+                # --- ZMIENIONE PROPORCJE KOLUMN ---
+                c = st.columns([1.6, 1.0, 1.0, 3.8, 1.1, 0.5])
                 
                 status = z.get('status', 'W produkcji')
                 b_status = '<span class="badge-status-ready">✅ GOTOWE</span>' if status == 'Gotowe' else '<span class="badge-status-prod">⏳ PRODUKCJA</span>'
                 c[0].markdown(f"**{z.get('klient')}** {'🔥' if z.get('pilne') else ''} <br>{b_status}", unsafe_allow_html=True)
                 
-                # Zamiast skaczącego text_input, wyświetlamy termin stabilnie
                 c[1].write(f"{z.get('termin')}")
-                
                 c[2].write(f"{z.get('data_p')}")
                 
                 with c[3].popover("Edytuj / Drukuj"):
-                    # PRZYCISK DO POBIERANIA KARTY DRUKU
                     st.download_button(
                         label="🖨️ Pobierz Kartę do druku",
                         data=generuj_html_do_druku(z),
@@ -448,7 +451,6 @@ with t_prod:
                         
                     st.markdown("---")
                     st.markdown("**Daty i Transport:**")
-                    # EDYCJA TERMINU PRZENIESIONA TUTAJ
                     nt = st.text_input("Data realizacji:", value=z.get('termin', ''), key=f"zt_edit_{i}")
                     na = st.selectbox("Transport:", OPCJE_TRANSPORTU, index=OPCJE_TRANSPORTU.index(auto_val), key=f"na{i}")
                     nk = st.selectbox("Kurs:", [1,2,3,4,5], index=k_val-1, key=f"nk{i}")
@@ -480,7 +482,7 @@ with t_log:
         if not dane["przyjecia"]: 
             st.info("Brak dostaw.")
         else:
-            hc = st.columns([1.5, 1.2, 1.2, 4.5, 0.8, 0.4])
+            hc = st.columns([1.6, 1.0, 1.0, 3.8, 1.1, 0.5])
             hc[0].markdown('<div class="label-text">Dostawca</div>', unsafe_allow_html=True)
             hc[1].markdown('<div class="label-text">Termin</div>', unsafe_allow_html=True)
             hc[2].markdown('<div class="label-text">Dodano</div>', unsafe_allow_html=True)
@@ -489,15 +491,12 @@ with t_log:
             
             for i, p in enumerate(dane["przyjecia"]):
                 if search and search not in str(p).lower(): continue
-                c = st.columns([1.5, 1.2, 1.2, 4.5, 0.8, 0.4])
+                c = st.columns([1.6, 1.0, 1.0, 3.8, 1.1, 0.5])
                 c[0].write(f"**{p.get('dostawca')}** {'🔥' if p.get('pilne') else ''}")
                 
-                # Zamiast skaczącego text_input, wyświetlamy termin stabilnie
                 c[1].write(f"{p.get('termin', '-')}")
-                
                 c[2].write(f"{p.get('data_p')}")
                 with c[3].popover("Co w dostawie? / Edytuj"):
-                    # Edycja terminu przeniesiona tutaj
                     nt = st.text_input("Termin dostawy:", value=p.get('termin', ''), key=f"lt_edit_{i}")
                     no = st.text_area("Zawartość", value=p.get('towar',''), key=f"lo{i}")
                     if st.button("Zapisz", key=f"ls{i}"): 
@@ -513,7 +512,7 @@ with t_dysp:
         if not dane["dyspozycje"]:
             st.info("Brak zadań.")
         else:
-            hc = st.columns([1.5, 1.2, 1.2, 4.5, 0.8, 0.4])
+            hc = st.columns([1.6, 1.0, 1.0, 3.8, 1.1, 0.5])
             hc[0].markdown('<div class="label-text">Tytuł</div>', unsafe_allow_html=True)
             hc[1].markdown('<div class="label-text">Termin</div>', unsafe_allow_html=True)
             hc[2].markdown('<div class="label-text">Dodano</div>', unsafe_allow_html=True)
@@ -522,15 +521,12 @@ with t_dysp:
             
             for i, d in enumerate(dane["dyspozycje"]):
                 if search and search not in str(d).lower(): continue
-                c = st.columns([1.5, 1.2, 1.2, 4.5, 0.8, 0.4])
+                c = st.columns([1.6, 1.0, 1.0, 3.8, 1.1, 0.5])
                 c[0].write(f"**{d.get('tytul')}** {'🔥' if d.get('pilne') else ''}")
                 
-                # Zamiast skaczącego text_input, wyświetlamy termin stabilnie
                 c[1].write(f"{d.get('termin', '-')}")
-                
                 c[2].write(f"{d.get('data_p')}")
                 with c[3].popover("Opis / Edytuj"):
-                    # Edycja terminu przeniesiona tutaj
                     nt = st.text_input("Termin zadania:", value=d.get('termin', ''), key=f"dt_edit_{i}")
                     no = st.text_area("Szczegóły", value=d.get('opis',''), key=f"do{i}")
                     if st.button("Zapisz", key=f"ds{i}"): 
