@@ -93,9 +93,7 @@ div[data-testid="stPopover"] > button { min-height: 32px !important; height: 32p
 .label-text { font-size: 11px; color: #6c757d; font-weight: 700; text-transform: uppercase; border-bottom: 1px solid #dee2e6; padding-bottom: 4px;}
 button[data-baseweb="tab"] { font-size: 16px !important; font-weight: 600 !important; }
 
-/* TWARDE WYRÓWNANIE DO ŚRODKA */
 div[data-testid="stHorizontalBlock"] { align-items: center !important; }
-div[data-testid="stHorizontalBlock"] p { margin-bottom: 0 !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -140,7 +138,6 @@ def zapisz_dane(dane):
 
 dane = wczytaj_dane()
 
-# --- FUNKCJA GENERUJĄCA HTML DO DRUKU ---
 def generuj_html_do_druku(z):
     pilne_html = '<div style="color:red; border:4px solid red; padding:10px; text-align:center; font-size:24px; font-weight:bold;">🔥 ZLECENIE PILNE 🔥</div>' if z.get('pilne') else ''
     auto_val = z.get('auto', 'Brak'); k_val = z.get('kurs', 1); transport_str = f"{auto_val} / Kurs nr {k_val}" if auto_val in ["Auto 1", "Auto 2"] else auto_val
@@ -183,10 +180,10 @@ with st.sidebar:
 
     if st.session_state.user == "admin":
         with st.expander("👥 Użytkownicy"):
-            with st.form("add_user", clear_on_submit=True):
-                nu = st.text_input("Login"); np = st.text_input("Hasło")
+            with st.form("add_u_f", clear_on_submit=True):
+                new_u = st.text_input("Login"); new_p = st.text_input("Hasło")
                 if st.form_submit_button("Dodaj"):
-                    if nu: dane["uzytkownicy"][nu] = np; zapisz_dane(dane); st.rerun()
+                    if new_u: dane["uzytkownicy"][new_u] = new_p; zapisz_dane(dane); st.rerun()
             for usr in list(dane["uzytkownicy"].keys()):
                 if usr != "admin":
                     if st.button(f"Usuń {usr}", key=f"del_{usr}"): del dane["uzytkownicy"][usr]; zapisz_dane(dane); st.rerun()
@@ -194,12 +191,12 @@ with st.sidebar:
 
     st.markdown('<div class="sidebar-header">➕ DODAJ NOWY WPIS</div>', unsafe_allow_html=True)
     typ = st.selectbox("Rodzaj:", ["Produkcja", "Dostawa (PZ)", "Dyspozycja"])
-    with st.form("f_add", clear_on_submit=True):
+    with st.form("f_p", clear_on_submit=True):
         if typ == "Produkcja":
-            kl = st.text_input("👤 Klient"); tm = st.text_input("📅 Termin (np. 31.03)"); op = st.text_area("📝 Specyfikacja"); sz = st.text_area("📦 Ilości"); auto = st.selectbox("Transport:", OPCJE_TRANSPORTU); kr = st.selectbox("Kurs:", [1,2,3,4,5]); p = st.checkbox("🔥 PILNE")
+            kl = st.text_input("👤 Klient"); tm = st.text_input("📅 Termin (np. 31.03)"); op = st.text_area("📝 Specyfikacja"); sz = st.text_area("📦 Ilości"); auto = st.selectbox("Transport:", OPCJE_TRANSPORTU); kurs = st.selectbox("Kurs nr:", [1, 2, 3, 4, 5]); p = st.checkbox("🔥 PILNE")
             if st.form_submit_button("💾 Zapisz"):
                 if kl: 
-                    dane["w_realizacji"].append({"klient":kl,"termin":tm,"opis":op,"szczegoly":sz,"auto":auto,"kurs":kr,"pilne":p,"status":"W produkcji","data_p":datetime.now().strftime("%d.%m %H:%M"),"autor":st.session_state.user})
+                    dane["w_realizacji"].append({"klient":kl,"termin":tm,"opis":op,"szczegoly":sz,"auto":auto,"kurs":kurs,"pilne":p,"status":"W produkcji","data_p":datetime.now().strftime("%d.%m %H:%M"),"autor":st.session_state.user})
                     zapisz_dane(dane); st.rerun()
         elif typ == "Dostawa (PZ)":
             ds = st.text_input("🏢 Dostawca"); tm = st.text_input("📅 Data"); op = st.text_area("📦 Co przyjeżdża?")
@@ -235,7 +232,6 @@ for i in range(7):
     with cols[i]:
         st.markdown(f"<div class='day-header'><div class='day-name'>{['Pon','Wt','Śr','Czw','Pt','Sob','Nd'][i]}</div><div class='day-date'>{day.strftime('%d.%m')}</div></div>", unsafe_allow_html=True)
         dv, mv = day.day, day.month
-        
         grupy = {}
         for z in dane["w_realizacji"]:
             try:
@@ -251,10 +247,8 @@ for i in range(7):
             for it in items:
                 st_cl = "cal-entry-ready" if it.get('status')=="Gotowe" else "cal-entry-out"
                 prefix = "✅ " if it.get('status')=="Gotowe" else ""
-                op_s = str(it.get('opis','')).replace('"', '&quot;').replace('\n', ' ')
-                tooltip = f"SPEC: {op_s}"
+                tooltip = f"SPEC: {str(it.get('opis','')).replace('\"', '&quot;')}"
                 st.markdown(f"<div class='{st_cl}' title='{tooltip}'>{prefix}{it.get('klient')}</div>", unsafe_allow_html=True)
-        
         for p in dane["przyjecia"]:
             try:
                 pd, pm = map(int, p.get('termin','').split('.')[:2])
@@ -279,23 +273,21 @@ with t_prod:
         if not dane["w_realizacji"]: st.info("Brak aktywnych zleceń.")
         else:
             hc = st.columns([2.0, 1.2, 5.0, 1.2, 0.6])
-            hc[0].markdown('<div class="label-text">Klient</div>', unsafe_allow_html=True); hc[1].markdown('<div class="label-text">Termin</div>', unsafe_allow_html=True); hc[2].markdown('<div class="label-text">Edycja / Druk</div>', unsafe_allow_html=True); hc[3].markdown('<div class="label-text">Status</div>', unsafe_allow_html=True)
+            hc[0].markdown('<div class="label-text">Klient</div>', unsafe_allow_html=True); hc[1].markdown('<div class="label-text">Termin</div>', unsafe_allow_html=True); hc[2].markdown('<div class="label-text">Menu</div>', unsafe_allow_html=True); hc[3].markdown('<div class="label-text">Status</div>', unsafe_allow_html=True)
             last_g = None
             for i, z in enumerate(dane["w_realizacji"]):
                 if search and search not in str(z).lower(): continue
                 curr_g = (z.get('termin'), z.get('auto'), z.get('kurs'))
                 if curr_g != last_g:
-                    st.markdown(f"<div class='table-group-header'>📅 {z.get('termin')} | {z.get('auto')} (K{z.get('kurs')})</div>", unsafe_allow_html=True)
-                    last_g = curr_g
+                    st.markdown(f"<div class='table-group-header'>📅 {z.get('termin')} | {z.get('auto')} (K{z.get('kurs')})</div>", unsafe_allow_html=True); last_g = curr_g
                 c = st.columns([2.0, 1.2, 5.0, 1.2, 0.6])
                 status = z.get('status','W produkcji'); b_st = '<span class="badge-status-ready">✅ GOTOWE</span>' if status=='Gotowe' else '<span class="badge-status-prod">⏳ PRODUKCJA</span>'
                 c[0].markdown(f"**{z.get('klient')}** {'🔥' if z.get('pilne') else ''}<br>{b_st}", unsafe_allow_html=True); c[1].write(z.get('termin'))
                 u_id = f"{z.get('data_p')}_{i}".replace(':','').replace(' ','_')
-                with c[2].popover("Menu"):
-                    st.download_button("🖨️ Pobierz Kartę", generuj_html_do_druku(z), f"Karta_{u_id}.html", "text/html", key=f"dl_{u_id}")
-                    nt = st.text_input("Data", z.get('termin'), key=f"et_{u_id}"); na = st.selectbox("Auto", OPCJE_TRANSPORTU, OPCJE_TRANSPORTU.index(z.get('auto','Brak')), key=f"ea_{u_id}"); nk = st.selectbox("Kurs", [1,2,3,4,5], int(z.get('kurs',1))-1, key=f"k_{u_id}"); no = st.text_area("Specyfikacja", z.get('opis',''), key=f"o_{u_id}"); ns = st.text_area("Ilości", z.get('szczegoly',''), key=f"s_{u_id}")
-                    if st.button("Zapisz", key=f"sv_{u_id}"):
-                        dane["w_realizacji"][i].update({"termin":nt,"auto":na,"kurs":nk,"opis":no,"szczegoly":ns}); zapisz_dane(dane); st.rerun()
+                with c[2].popover("Opcje"):
+                    st.download_button("🖨️ Karta", generuj_html_do_druku(z), f"Karta_{u_id}.html", "text/html", key=f"dl_{u_id}")
+                    nt = st.text_input("Data", z.get('termin'), key=f"et_{u_id}"); na = st.selectbox("Auto", OPCJE_TRANSPORTU, OPCJE_TRANSPORTU.index(z.get('auto','Brak')), key=f"ea_{u_id}"); nk = st.selectbox("Kurs", [1,2,3,4,5], int(z.get('kurs',1))-1, key=f"ek_{u_id}"); no = st.text_area("Specyfikacja", z.get('opis',''), key=f"o_{u_id}"); ns = st.text_area("Ilości", z.get('szczegoly',''), key=f"s_{u_id}")
+                    if st.button("Zapisz", key=f"sv_{u_id}"): dane["w_realizacji"][i].update({"termin":nt,"auto":na,"kurs":nk,"opis":no,"szczegoly":ns}); zapisz_dane(dane); st.rerun()
                 if status != "Gotowe":
                     if c[3].button("ZROBIONE", key=f"done_{u_id}"): dane["w_realizacji"][i]['status']="Gotowe"; zapisz_dane(dane); st.rerun()
                 else:
@@ -309,16 +301,15 @@ with t_log:
         if not dane["przyjecia"]: st.info("Brak aktywnych dostaw.")
         else:
             hc = st.columns([2.0, 1.2, 5.0, 1.2, 0.6])
-            hc[0].markdown('<div class="label-text">Dostawca</div>', unsafe_allow_html=True); hc[1].markdown('<div class="label-text">Termin</div>', unsafe_allow_html=True); hc[2].markdown('<div class="label-text">Szczegóły / Edycja</div>', unsafe_allow_html=True); hc[3].markdown('<div class="label-text">Akcja</div>', unsafe_allow_html=True)
+            hc[0].markdown('<div class="label-text">Dostawca</div>', unsafe_allow_html=True); hc[1].markdown('<div class="label-text">Termin</div>', unsafe_allow_html=True); hc[2].markdown('<div class="label-text">Szczegóły</div>', unsafe_allow_html=True); hc[3].markdown('<div class="label-text">Akcja</div>', unsafe_allow_html=True)
             last_l = None
             for i, p in enumerate(dane["przyjecia"]):
                 if search and search not in str(p).lower(): continue
                 if p.get('termin') != last_l:
                     st.markdown(f"<div class='table-group-header'>📅 {p.get('termin')} | Dostawy towarów</div>", unsafe_allow_html=True); last_l = p.get('termin')
-                c = st.columns([2.0, 1.2, 5.0, 1.2, 0.6])
-                c[0].write(f"**{p.get('dostawca')}**"); c[1].write(p.get('termin'))
+                c = st.columns([2.0, 1.2, 5.0, 1.2, 0.6]); c[0].write(f"**{p.get('dostawca')}**"); c[1].write(p.get('termin'))
                 p_id = f"p_{i}_{p.get('data_p')}".replace(':','').replace(' ','_')
-                with c[2].popover("Menu"):
+                with c[2].popover("Edytuj"):
                     nt = st.text_input("Data", p.get('termin'), key=f"pt_{p_id}"); no = st.text_area("Towar", p.get('towar',''), key=f"po_{p_id}")
                     if st.button("Zapisz", key=f"ps_{p_id}"): dane["przyjecia"][i].update({"termin":nt,"towar":no}); zapisz_dane(dane); st.rerun()
                 if c[3].button("OK", key=f"pok_{p_id}"): dane["przyjecia_historia"].append(dane["przyjecia"].pop(i)); zapisz_dane(dane); st.rerun()
@@ -331,11 +322,17 @@ with t_dysp:
         if not dane["dyspozycje"]: st.info("Brak aktywnych zadań.")
         else:
             hc = st.columns([2.0, 1.2, 5.0, 1.2, 0.6])
-            hc[0].markdown('<div class="label-text">Tytuł</div>', unsafe_allow_html=True); hc[1].markdown('<div class="label-text">Termin</div>', unsafe_allow_html=True); hc[2].markdown('<div class="label-text">Opis / Edycja</div>', unsafe_allow_html=True); hc[3].markdown('<div class="label-text">Akcja</div>', unsafe_allow_html=True)
+            hc[0].markdown('<div class="label-text">Tytuł</div>', unsafe_allow_html=True); hc[1].markdown('<div class="label-text">Termin</div>', unsafe_allow_html=True); hc[2].markdown('<div class="label-text">Opis</div>', unsafe_allow_html=True); hc[3].markdown('<div class="label-text">Akcja</div>', unsafe_allow_html=True)
             last_d = None
             for i, d in enumerate(dane["dyspozycje"]):
                 if search and search not in str(d).lower(): continue
                 if d.get('termin') != last_d:
                     st.markdown(f"<div class='table-group-header'>📅 {d.get('termin')} | Dyspozycje wewn.</div>", unsafe_allow_html=True); last_d = d.get('termin')
-                c = st.columns([2.0, 1.2, 5.0, 1.2, 0.6])
-                c[0].write(f"**{d.get('ty
+                c = st.columns([2.0, 1.2, 5.0, 1.2, 0.6]); c[0].write(f"**{d.get('tytul')}**"); c[1].write(d.get('termin'))
+                d_id = f"d_{i}_{d.get('data_p')}".replace(':','').replace(' ','_')
+                with c[2].popover("Edytuj"):
+                    nt = st.text_input("Termin", d.get('termin'), key=f"dt_{d_id}"); no = st.text_area("Opis", d.get('opis',''), key=f"do_{d_id}")
+                    if st.button("Zapisz", key=f"ds_{d_id}"): dane["dyspozycje"][i].update({"termin":nt,"opis":no}); zapisz_dane(dane); st.rerun()
+                if c[3].button("GOTOWE", key=f"dg_{d_id}"): dane["dyspozycje_historia"].append(dane["dyspozycje"].pop(i)); zapisz_dane(dane); st.rerun()
+                if c[4].button("X", key=f"dx_{d_id}"): dane["dyspozycje"].pop(i); zapisz_dane(dane); st.rerun()
+    with td2: st.dataframe(dane["dyspozycje_historia"][::-1], use_container_width=True)
