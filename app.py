@@ -9,22 +9,35 @@ st.set_page_config(page_title="GROPAK ERP", layout="wide")
 
 st.markdown("""
     <style>
+    /* Wspólne ustawienia przycisków */
     .stButton>button, .stFormSubmitButton>button { 
         width: 100%; border-radius: 6px; min-height: 32px !important; height: 32px !important; 
         font-size: 12px; font-weight: 600; transition: all 0.2s ease-in-out;
         border: 1px solid #ced4da; padding: 0 10px; line-height: 1; box-shadow: 0 1px 2px rgba(0,0,0,0.05);
     }
+    
+    /* ZIELONE: GOTOWE / OK */
     button:has(div p:contains("GOTOWE")), button:has(div p:contains("OK")), button:contains("GOTOWE"), button:contains("OK") {
         border: none !important; color: white !important; background-color: #28a745 !important;
     }
     button:has(div p:contains("GOTOWE")):hover, button:has(div p:contains("OK")):hover {
         background-color: #218838 !important; box-shadow: 0 2px 5px rgba(40, 167, 69, 0.4); transform: translateY(-1px);
     }
+    
+    /* CZERWONE: X */
     button:has(div p:contains("X")), button:contains("X") {
         border: none !important; color: white !important; background-color: #dc3545 !important; padding: 0 !important;
     }
     button:has(div p:contains("X")):hover, button:contains("X"):hover {
         background-color: #c82333 !important; box-shadow: 0 2px 5px rgba(220, 53, 69, 0.4); transform: translateY(-1px);
+    }
+    
+    /* NIEBIESKIE: Zapisz (Panel Boczny) */
+    button:has(div p:contains("Zapisz")), button:contains("Zapisz") {
+        border: none !important; color: white !important; background-color: #007bff !important;
+    }
+    button:has(div p:contains("Zapisz")):hover, button:contains("Zapisz"):hover {
+        background-color: #0056b3 !important; box-shadow: 0 2px 5px rgba(0, 123, 255, 0.4); transform: translateY(-1px);
     }
     
     div[data-testid="stHorizontalBlock"] { align-items: center !important; padding: 4px 0; }
@@ -37,31 +50,18 @@ st.markdown("""
         font-weight: 700; color: #212529; text-transform: uppercase; border-left: 5px solid #2b3035; box-shadow: 0 1px 3px rgba(0,0,0,0.04);
     }
     
-    /* NOWY KALENDARZ (SIATKA CSS) */
-    .week-grid {
-        display: grid;
-        grid-template-columns: repeat(7, 1fr);
-        gap: 12px;
-        align-items: stretch; /* Wymusza równą wysokość wszystkich kafelków w wierszu */
-        margin-top: 15px;
-        margin-bottom: 25px;
+    /* PANEL BOCZNY - NAGŁÓWEK */
+    .sidebar-header {
+        background: linear-gradient(90deg, #1e7e34, #28a745);
+        color: white; padding: 12px; border-radius: 6px; text-align: center;
+        font-weight: 700; font-size: 14px; margin-bottom: 15px; letter-spacing: 1px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     }
-    .day-col {
-        background-color: #ffffff;
-        border: 1px solid #dee2e6;
-        border-radius: 8px;
-        padding: 10px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.02);
-        display: flex;
-        flex-direction: column;
-        min-height: 120px;
-    }
-    .day-header {
-        text-align: center;
-        border-bottom: 2px solid #343a40;
-        margin-bottom: 12px;
-        padding-bottom: 6px;
-    }
+    
+    /* KALENDARZ SIATKA */
+    .week-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 12px; align-items: stretch; margin-top: 15px; margin-bottom: 25px; }
+    .day-col { background-color: #ffffff; border: 1px solid #dee2e6; border-radius: 8px; padding: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); display: flex; flex-direction: column; min-height: 120px; }
+    .day-header { text-align: center; border-bottom: 2px solid #343a40; margin-bottom: 12px; padding-bottom: 6px; }
     .day-name { font-weight: 700; font-size: 13px; color: #495057; }
     .day-date { font-size: 11px; color: #868e96; }
     
@@ -71,7 +71,6 @@ st.markdown("""
     
     .badge-urgent { background-color: #dc3545; color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold; margin-left: 5px; }
     .label-text { font-size: 11px; color: #6c757d; font-weight: 700; text-transform: uppercase; margin-bottom: 5px; }
-    
     button[data-baseweb="tab"] { font-size: 16px !important; font-weight: 600 !important; }
     </style>
     """, unsafe_allow_html=True)
@@ -139,18 +138,19 @@ if not st.session_state.user:
                     st.error("Błąd logowania")
     st.stop()
 
-# --- 4. PANEL BOCZNY ---
+# --- 4. PANEL BOCZNY (UPIĘKSZONY) ---
 with st.sidebar:
     st.write(f"Zalogowany: **{st.session_state.user}**")
-    if st.button("Wyloguj"): st.session_state.user = None; st.rerun()
+    if st.button("🚪 Wyloguj"): st.session_state.user = None; st.rerun()
     st.divider()
 
     if st.session_state.user == "admin":
-        with st.expander("Zarządzanie kontami"):
-            nu = st.text_input("Nowy login")
-            nh = st.text_input("Nowe hasło")
-            if st.button("Dodaj pracownika") and nu: 
-                dane["uzytkownicy"][nu] = nh; zapisz_dane(dane); st.rerun()
+        with st.expander("🛠️ Zarządzanie kontami"):
+            with st.form("dodaj_konta"):
+                nu = st.text_input("Nowy login")
+                nh = st.text_input("Nowe hasło")
+                if st.form_submit_button("Dodaj pracownika") and nu: 
+                    dane["uzytkownicy"][nu] = nh; zapisz_dane(dane); st.rerun()
             st.write("Lista kont:")
             for usr in list(dane["uzytkownicy"].keys()):
                 if usr != "admin":
@@ -158,27 +158,42 @@ with st.sidebar:
                         del dane["uzytkownicy"][usr]; zapisz_dane(dane); st.rerun()
     st.divider()
     
-    st.title("NOWY WPIS")
-    typ = st.selectbox("Rodzaj", ["Produkcja", "Dostawa (PZ)", "Dyspozycja"])
+    st.markdown('<div class="sidebar-header">➕ DODAJ NOWY WPIS</div>', unsafe_allow_html=True)
+    typ = st.selectbox("Wybierz rodzaj operacji:", ["🏭 Zlecenie Produkcji", "🚚 Dostawa (PZ)", "📋 Dyspozycja Dodatkowa"], label_visibility="collapsed")
+    st.markdown("<br>", unsafe_allow_html=True)
     
-    if typ == "Produkcja":
-        kl = st.text_input("Klient"); tm = st.text_input("Termin (np. 31.03)"); op = st.text_area("Specyfikacja"); p = st.checkbox("🔥 PILNE")
-        if st.button("Zapisz Zlecenie"):
-            if kl: 
-                dane["w_realizacji"].append({"klient": kl, "termin": tm, "opis": op, "pilne": p, "data_p": datetime.now().strftime("%d.%m %H:%M"), "autor": st.session_state.user})
-                zapisz_dane(dane); st.rerun()
-    elif typ == "Dostawa (PZ)":
-        ds = st.text_input("Dostawca"); tm = st.text_input("Data (np. 31.03)"); op = st.text_area("Szczegóły"); p = st.checkbox("🔥 PILNE")
-        if st.button("Zapisz Dostawę"):
-            if ds: 
-                dane["przyjecia"].append({"dostawca": ds, "termin": tm, "towar": op, "pilne": p, "data_p": datetime.now().strftime("%d.%m %H:%M"), "autor": st.session_state.user})
-                zapisz_dane(dane); st.rerun()
+    if typ == "🏭 Zlecenie Produkcji":
+        with st.form("form_prod", clear_on_submit=True):
+            kl = st.text_input("👤 Klient (Nazwa / Firma)")
+            tm = st.text_input("📅 Termin (np. 31.03)")
+            op = st.text_area("📝 Specyfikacja szczegółowa")
+            p = st.checkbox("🔥 Oznacz jako PILNE")
+            if st.form_submit_button("💾 Zapisz Zlecenie"):
+                if kl: 
+                    dane["w_realizacji"].append({"klient": kl, "termin": tm, "opis": op, "pilne": p, "data_p": datetime.now().strftime("%d.%m %H:%M"), "autor": st.session_state.user})
+                    zapisz_dane(dane); st.rerun()
+                    
+    elif typ == "🚚 Dostawa (PZ)":
+        with st.form("form_log", clear_on_submit=True):
+            ds = st.text_input("🏢 Dostawca")
+            tm = st.text_input("📅 Data dostawy (np. 31.03)")
+            op = st.text_area("📦 Co przyjeżdża? (Zawartość)")
+            p = st.checkbox("🔥 Oznacz jako PILNE")
+            if st.form_submit_button("💾 Zapisz Dostawę"):
+                if ds: 
+                    dane["przyjecia"].append({"dostawca": ds, "termin": tm, "towar": op, "pilne": p, "data_p": datetime.now().strftime("%d.%m %H:%M"), "autor": st.session_state.user})
+                    zapisz_dane(dane); st.rerun()
+                    
     else:
-        tyt = st.text_input("Tytuł zadania"); tm = st.text_input("Termin (np. 31.03)"); op = st.text_area("Opis"); p = st.checkbox("🔥 PILNE")
-        if st.button("Zapisz Zadanie"):
-            if tyt: 
-                dane["dyspozycje"].append({"tytul": tyt, "termin": tm, "opis": op, "pilne": p, "data_p": datetime.now().strftime("%d.%m %H:%M"), "autor": st.session_state.user})
-                zapisz_dane(dane); st.rerun()
+        with st.form("form_dysp", clear_on_submit=True):
+            tyt = st.text_input("🎯 Tytuł zadania")
+            tm = st.text_input("📅 Na kiedy? (np. 31.03)")
+            op = st.text_area("📝 Opis / Instrukcje")
+            p = st.checkbox("🔥 Oznacz jako PILNE")
+            if st.form_submit_button("💾 Zapisz Zadanie"):
+                if tyt: 
+                    dane["dyspozycje"].append({"tytul": tyt, "termin": tm, "opis": op, "pilne": p, "data_p": datetime.now().strftime("%d.%m %H:%M"), "autor": st.session_state.user})
+                    zapisz_dane(dane); st.rerun()
 
 # --- 5. STATYSTYKI ---
 st.markdown('<div class="section-header">Podsumowanie</div>', unsafe_allow_html=True)
@@ -212,7 +227,6 @@ def parse_d(txt):
 
 day_names = ["Poniedziałek", "Wtorek", "Środa", "Czwartek", "Piątek", "Sobota", "Niedziela"]
 
-# Generowanie struktury HTML dla kalendarza
 html_calendar = '<div class="week-grid">'
 for i, date in enumerate(dates_in_week):
     html_calendar += f'<div class="day-col">'
@@ -238,10 +252,9 @@ for i, date in enumerate(dates_in_week):
             p_mark = "🔥 " if ds.get('pilne') else ""
             html_calendar += f'<div class="cal-entry-task">{p_mark}D: {ds.get("tytul", "-")}</div>'
             
-    html_calendar += '</div>' # Zamknięcie kolumny dnia
-html_calendar += '</div>' # Zamknięcie siatki
+    html_calendar += '</div>' 
+html_calendar += '</div>' 
 
-# Wyświetlenie kalendarza
 st.markdown(html_calendar, unsafe_allow_html=True)
 
 # --- 7. TABELE REALIZACJI ---
