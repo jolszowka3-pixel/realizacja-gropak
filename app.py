@@ -12,88 +12,33 @@ st.markdown("""
     <style>
     /* Globalne ustawienia przycisków */
     .stButton>button { 
-        width: 100%; 
-        border-radius: 6px; 
-        min-height: 32px !important;
-        height: 32px !important; 
-        font-size: 12px; 
-        font-weight: 600; 
-        transition: all 0.2s ease-in-out;
-        border: 1px solid #ced4da;
-        padding: 0 10px;
-        line-height: 1;
-        box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        width: 100%; border-radius: 6px; min-height: 32px !important; height: 32px !important; 
+        font-size: 12px; font-weight: 600; transition: all 0.2s ease-in-out;
+        border: 1px solid #ced4da; padding: 0 10px; line-height: 1; box-shadow: 0 1px 2px rgba(0,0,0,0.05);
     }
-
-    /* ZIELONE: GOTOWE / OK (Pełny kolor) */
-    button:has(div p:contains("GOTOWE")), 
-    button:has(div p:contains("OK")),
-    button:contains("GOTOWE"),
-    button:contains("OK") {
-        border: none !important;
-        color: white !important;
-        background-color: #28a745 !important;
+    /* ZIELONE: GOTOWE / OK */
+    button:has(div p:contains("GOTOWE")), button:has(div p:contains("OK")), button:contains("GOTOWE"), button:contains("OK") {
+        border: none !important; color: white !important; background-color: #28a745 !important;
     }
-    button:has(div p:contains("GOTOWE")):hover, 
-    button:has(div p:contains("OK")):hover,
-    button:contains("GOTOWE"):hover,
-    button:contains("OK"):hover {
-        background-color: #218838 !important;
-        box-shadow: 0 2px 5px rgba(40, 167, 69, 0.4);
-        transform: translateY(-1px);
+    button:has(div p:contains("GOTOWE")):hover, button:has(div p:contains("OK")):hover, button:contains("GOTOWE"):hover, button:contains("OK"):hover {
+        background-color: #218838 !important; box-shadow: 0 2px 5px rgba(40, 167, 69, 0.4); transform: translateY(-1px);
     }
-
-    /* CZERWONE: X (Usuwanie - pełny kolor) */
-    button:has(div p:contains("X")),
-    button:contains("X") {
-        border: none !important;
-        color: white !important;
-        background-color: #dc3545 !important;
-        padding: 0 !important;
+    /* CZERWONE: X */
+    button:has(div p:contains("X")), button:contains("X") {
+        border: none !important; color: white !important; background-color: #dc3545 !important; padding: 0 !important;
     }
-    button:has(div p:contains("X")):hover,
-    button:contains("X"):hover {
-        background-color: #c82333 !important;
-        box-shadow: 0 2px 5px rgba(220, 53, 69, 0.4);
-        transform: translateY(-1px);
-    }
-
-    /* Wyśrodkowanie elementów w wierszach tabeli i redukcja luzów */
-    div[data-testid="stHorizontalBlock"] {
-        align-items: center !important;
-        padding: 4px 0;
-    }
-
-    /* Unifikacja wysokości inputów, żeby idealnie pasowały do przycisków */
-    .stTextInput input { 
-        min-height: 32px !important;
-        height: 32px !important; 
-        font-size: 12px !important; 
-        border-radius: 6px !important;
+    button:has(div p:contains("X")):hover, button:contains("X"):hover {
+        background-color: #c82333 !important; box-shadow: 0 2px 5px rgba(220, 53, 69, 0.4); transform: translateY(-1px);
     }
     
-    /* Popover (przycisk rozwijający) też musi trzymać wymiar */
-    div[data-testid="stPopover"] > button { 
-        min-height: 32px !important;
-        height: 32px !important;
-        border: 1px solid #ced4da !important; 
-        background: white !important; 
-        text-align: left !important; 
-        color: #495057 !important; 
-    }
+    div[data-testid="stHorizontalBlock"] { align-items: center !important; padding: 4px 0; }
+    .stTextInput input { min-height: 32px !important; height: 32px !important; font-size: 12px !important; border-radius: 6px !important; }
+    div[data-testid="stPopover"] > button { min-height: 32px !important; height: 32px !important; border: 1px solid #ced4da !important; background: white !important; text-align: left !important; color: #495057 !important; }
 
     .main .block-container { padding-top: 2rem; }
     .section-header {
-        background-color: #f8f9fa;
-        padding: 12px 15px;
-        border-radius: 6px;
-        margin-bottom: 12px;
-        margin-top: 25px;
-        font-weight: 700;
-        color: #212529;
-        text-transform: uppercase;
-        border-left: 5px solid #2b3035;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        background-color: #f8f9fa; padding: 12px 15px; border-radius: 6px; margin-bottom: 12px; margin-top: 25px;
+        font-weight: 700; color: #212529; text-transform: uppercase; border-left: 5px solid #2b3035; box-shadow: 0 1px 3px rgba(0,0,0,0.04);
     }
     
     .cal-day { font-weight: 700; color: #212529; margin-bottom: 8px; font-size: 14px; border-bottom: 1px solid #dee2e6; }
@@ -102,6 +47,9 @@ st.markdown("""
     .cal-entry-task { font-size: 10px; background: #fff4e6; color: #d9480f; border-left: 3px solid #d9480f; padding: 2px 5px; margin-bottom: 2px; border-radius: 2px; }
     
     .label-text { font-size: 11px; color: #6c757d; font-weight: 700; text-transform: uppercase; margin-bottom: 5px; }
+    
+    /* BADGE DLA PILNYCH ZADAŃ */
+    .badge-urgent { background-color: #dc3545; color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold; margin-left: 5px; vertical-align: middle;}
     </style>
     """, unsafe_allow_html=True)
 
@@ -175,28 +123,38 @@ with st.sidebar:
         kl = st.text_input("Klient")
         tm = st.text_input("Termin (np. 28.03)")
         op = st.text_area("Specyfikacja")
+        pilne = st.checkbox("🔥 Oznacz jako PILNE")
         if st.button("Zapisz Zlecenie"):
             if kl:
-                dane["w_realizacji"].append({"klient": kl, "termin": tm, "opis": op, "data_p": datetime.now().strftime("%d.%m %H:%M"), "autor": st.session_state.user})
+                dane["w_realizacji"].append({"klient": kl, "termin": tm, "opis": op, "pilne": pilne, "data_p": datetime.now().strftime("%d.%m %H:%M"), "autor": st.session_state.user})
                 zapisz_dane(dane); st.rerun()
     elif typ == "Dostawa (PZ)":
         ds = st.text_input("Dostawca")
         tm = st.text_input("Data (np. 29.03)")
         op = st.text_area("Co przyjeżdża?")
+        pilne = st.checkbox("🔥 Oznacz jako PILNE")
         if st.button("Zapisz Dostawę"):
             if ds:
-                dane["przyjecia"].append({"dostawca": ds, "termin": tm, "towar": op, "data_p": datetime.now().strftime("%d.%m %H:%M"), "autor": st.session_state.user})
+                dane["przyjecia"].append({"dostawca": ds, "termin": tm, "towar": op, "pilne": pilne, "data_p": datetime.now().strftime("%d.%m %H:%M"), "autor": st.session_state.user})
                 zapisz_dane(dane); st.rerun()
     else:
         tyt = st.text_input("Tytuł zadania")
         tm = st.text_input("Na kiedy? (np. 30.03)")
         op = st.text_area("Szczegóły")
+        pilne = st.checkbox("🔥 Oznacz jako PILNE")
         if st.button("Zapisz Zadanie"):
             if tyt:
-                dane["dyspozycje"].append({"tytul": tyt, "termin": tm, "opis": op, "data_p": datetime.now().strftime("%d.%m %H:%M"), "autor": st.session_state.user})
+                dane["dyspozycje"].append({"tytul": tyt, "termin": tm, "opis": op, "pilne": pilne, "data_p": datetime.now().strftime("%d.%m %H:%M"), "autor": st.session_state.user})
                 zapisz_dane(dane); st.rerun()
 
-# --- 5. KALENDARZ ---
+# --- 5. STATYSTYKI ---
+st.markdown('<div class="section-header">Podsumowanie</div>', unsafe_allow_html=True)
+col_stat1, col_stat2, col_stat3 = st.columns(3)
+col_stat1.metric("📦 Aktywne Zlecenia", len(dane["w_realizacji"]))
+col_stat2.metric("🚚 Oczekujące Dostawy", len(dane["przyjecia"]))
+col_stat3.metric("📋 Dyspozycje w toku", len(dane["dyspozycje"]))
+
+# --- 6. KALENDARZ ---
 if "cal_month" not in st.session_state: st.session_state.cal_month = datetime.now().month
 if "cal_year" not in st.session_state: st.session_state.cal_year = datetime.now().year
 
@@ -230,7 +188,8 @@ def add_to_cal(list_data, prefix, style_class, key_name):
         d, m, y = parse_date(item.get('termin', ''))
         if d and m == st.session_state.cal_month and y == st.session_state.cal_year:
             if d not in events: events[d] = []
-            events[d].append(f'<div class="{style_class}">{prefix}: {item[key_name]}</div>')
+            pilne_mark = "🔥" if item.get('pilne') else ""
+            events[d].append(f'<div class="{style_class}">{pilne_mark} {prefix}: {item[key_name]}</div>')
 
 add_to_cal(dane["w_realizacji"], "W", "cal-entry-out", "klient")
 add_to_cal(dane["przyjecia"], "P", "cal-entry-in", "dostawca")
@@ -249,18 +208,25 @@ for week in month_days:
             if day in events: html += "".join(events[day])
             cols[i].markdown(html, unsafe_allow_html=True)
 
-# --- 6. TABELE REALIZACJI ---
+# --- WYSZUKIWARKA ---
+st.markdown('<div class="section-header">Tabele Realizacji</div>', unsafe_allow_html=True)
+search_query = st.text_input("🔍 Wyszukaj (klient, dostawca, zadanie, opis...)", "").lower()
 
-# 6.1 PRODUKCJA
-st.markdown('<div class="section-header">Zlecenia Produkcyjne</div>', unsafe_allow_html=True)
+# --- 7. TABELE REALIZACJI ---
+
+# 7.1 PRODUKCJA
+st.markdown('**Zlecenia Produkcyjne**')
 tp1, tp2 = st.tabs(["Aktywne", "Zrealizowane"])
 with tp1:
-    if not dane["w_realizacji"]: st.info("Brak zleceń.")
+    filtered_prod = [z for z in dane["w_realizacji"] if search_query in z['klient'].lower() or search_query in z.get('opis', '').lower()]
+    if not filtered_prod: st.info("Brak pasujących zleceń.")
     else:
         st.markdown('<div style="display: flex; padding-left: 5px;"><div class="label-text" style="width: 16%;">Klient</div><div class="label-text" style="width: 13%;">Termin</div><div class="label-text" style="width: 13%;">Dodano</div><div class="label-text">Specyfikacja</div></div>', unsafe_allow_html=True)
         for i, z in enumerate(dane["w_realizacji"]):
+            if search_query and search_query not in z['klient'].lower() and search_query not in z.get('opis', '').lower(): continue
             c = st.columns([1.5, 1.2, 1.2, 4.5, 0.8, 0.4])
-            c[0].write(f"**{z['klient']}**")
+            badge = '<span class="badge-urgent">PILNE</span>' if z.get('pilne') else ''
+            c[0].markdown(f"**{z['klient']}** {badge}", unsafe_allow_html=True)
             nt = c[1].text_input("T", value=z['termin'], key=f"z_t_{i}", label_visibility="collapsed")
             if nt != z['termin']: dane["w_realizacji"][i]['termin'] = nt; zapisz_dane(dane); st.rerun()
             c[2].write(f"{z['data_p']} ({z.get('autor', 'brak')})")
@@ -274,15 +240,18 @@ with tp1:
             if c[5].button("X", key=f"z_x_{i}"): dane["w_realizacji"].pop(i); zapisz_dane(dane); st.rerun()
 with tp2: st.dataframe(pd.DataFrame(dane["zrealizowane"]).iloc[::-1], use_container_width=True)
 
-# 6.2 LOGISTYKA
-st.markdown('<div class="section-header">Przyjęcia Towaru (PZ)</div>', unsafe_allow_html=True)
+# 7.2 LOGISTYKA
+st.markdown('**Przyjęcia Towaru (PZ)**')
 tl1, tl2 = st.tabs(["Zaplanowane", "Historia"])
 with tl1:
-    if not dane["przyjecia"]: st.info("Brak dostaw.")
+    filtered_log = [p for p in dane["przyjecia"] if search_query in p['dostawca'].lower() or search_query in p.get('towar', '').lower()]
+    if not filtered_log: st.info("Brak pasujących dostaw.")
     else:
         for i, p in enumerate(dane["przyjecia"]):
+            if search_query and search_query not in p['dostawca'].lower() and search_query not in p.get('towar', '').lower(): continue
             c = st.columns([1.5, 1.2, 1.2, 4.5, 0.8, 0.4])
-            c[0].write(f"**{p['dostawca']}**")
+            badge = '<span class="badge-urgent">PILNE</span>' if p.get('pilne') else ''
+            c[0].markdown(f"**{p['dostawca']}** {badge}", unsafe_allow_html=True)
             nt = c[1].text_input("T", value=p['termin'], key=f"l_t_{i}", label_visibility="collapsed")
             if nt != p['termin']: dane["przyjecia"][i]['termin'] = nt; zapisz_dane(dane); st.rerun()
             c[2].write(f"{p['data_p']} ({p.get('autor', 'brak')})")
@@ -296,15 +265,18 @@ with tl1:
             if c[5].button("X", key=f"l_x_{i}"): dane["przyjecia"].pop(i); zapisz_dane(dane); st.rerun()
 with tl2: st.dataframe(pd.DataFrame(dane["przyjecia_historia"]).iloc[::-1], use_container_width=True)
 
-# 6.3 DYSPOZYCJE
-st.markdown('<div class="section-header">Dyspozycje Dodatkowe</div>', unsafe_allow_html=True)
+# 7.3 DYSPOZYCJE
+st.markdown('**Dyspozycje Dodatkowe**')
 td1, td2 = st.tabs(["W toku", "Historia"])
 with td1:
-    if not dane["dyspozycje"]: st.info("Brak zadań.")
+    filtered_dys = [d for d in dane["dyspozycje"] if search_query in d['tytul'].lower() or search_query in d.get('opis', '').lower()]
+    if not filtered_dys: st.info("Brak pasujących zadań.")
     else:
         for i, d in enumerate(dane["dyspozycje"]):
+            if search_query and search_query not in d['tytul'].lower() and search_query not in d.get('opis', '').lower(): continue
             c = st.columns([1.5, 1.2, 1.2, 4.5, 0.8, 0.4])
-            c[0].write(f"**{d['tytul']}**")
+            badge = '<span class="badge-urgent">PILNE</span>' if d.get('pilne') else ''
+            c[0].markdown(f"**{d['tytul']}** {badge}", unsafe_allow_html=True)
             nt = c[1].text_input("T", value=d['termin'], key=f"d_t_{i}", label_visibility="collapsed")
             if nt != d['termin']: dane["dyspozycje"][i]['termin'] = nt; zapisz_dane(dane); st.rerun()
             c[2].write(f"{d['data_p']} ({d.get('autor', 'brak')})")
