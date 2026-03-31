@@ -35,6 +35,10 @@ button:has(div p:contains("RESETUJ")), button:contains("RESETUJ") {
 button:has(div p:contains("Zaloguj się")), button:contains("Zaloguj się") {
     border: none !important; color: white !important; background-color: #1e7e34 !important; height: 40px !important; font-size: 14px; margin-top: 10px;
 }
+/* Przycisk przywracania (Admin) */
+button:has(div p:contains("Przywróć")), button:contains("Przywróć") {
+    border: none !important; color: white !important; background-color: #17a2b8 !important;
+}
 
 /* POLA TEKSTOWE */
 .stTextInput input { min-height: 32px !important; height: 32px !important; font-size: 12px !important; border-radius: 6px !important; }
@@ -63,9 +67,6 @@ div[data-testid="stPopover"] > button { min-height: 32px !important; height: 32p
 .day-header { text-align: center; border-bottom: 2px solid #343a40; margin-bottom: 8px; padding-bottom: 4px; }
 .day-name { font-weight: 700; font-size: 12px; color: #495057; text-transform: uppercase; }
 .day-date { font-size: 11px; color: #868e96; }
-
-.transport-group { background-color: #f8f9fa; border: 1px dashed #ced4da; border-radius: 4px; padding: 3px; margin-bottom: 5px; }
-.transport-group-header { font-size: 8px; font-weight: 800; color: #495057; text-transform: uppercase; margin-bottom: 3px; text-align: center; border-bottom: 1px solid #dee2e6; }
 
 .cal-entry-out, .cal-entry-ready, .cal-entry-in, .cal-entry-task, .cal-entry-return { 
     font-size: 10px; padding: 3px 5px; margin-bottom: 2px; border-radius: 3px; font-weight: 600; 
@@ -222,7 +223,7 @@ with st.sidebar:
     st.divider()
 
     if st.session_state.user == "admin":
-        with st.expander("👥 Użytkownicy"):
+        with st.expander("👥 Zarządzanie użytkownikami"):
             with st.form("add_u_f", clear_on_submit=True):
                 new_u = st.text_input("Login"); new_p = st.text_input("Hasło")
                 if st.form_submit_button("Dodaj"):
@@ -230,6 +231,58 @@ with st.sidebar:
             for usr in list(dane["uzytkownicy"].keys()):
                 if usr != "admin":
                     if st.button(f"Usuń {usr}", key=f"del_{usr}"): del dane["uzytkownicy"][usr]; zapisz_dane(dane); st.rerun()
+        
+        # --- NOWOŚĆ: PANEL KOREKTY DLA ADMINA ---
+        with st.expander("🛠️ Korekta i Przywracanie"):
+            kat = st.selectbox("Wybierz dział:", ["Produkcja (Zrealizowane)", "Odbiory (Historia)", "Przyjęcia (Historia)", "Dyspozycje (Historia)"])
+            
+            if kat == "Produkcja (Zrealizowane)":
+                for i, item in enumerate(dane["zrealizowane"]):
+                    st.markdown(f"**{item.get('klient')}** ({item.get('termin')})")
+                    c1, c2 = st.columns(2)
+                    if c1.button("↩️ Przywróć", key=f"res_p_{i}"):
+                        dane["w_realizacji"].append(dane["zrealizowane"].pop(i))
+                        zapisz_dane(dane); st.rerun()
+                    if c2.button("❌ Usuń trwale", key=f"fdel_p_{i}"):
+                        dane["zrealizowane"].pop(i)
+                        zapisz_dane(dane); st.rerun()
+                    st.divider()
+            
+            elif kat == "Odbiory (Historia)":
+                for i, item in enumerate(dane["odbiory_historia"]):
+                    st.markdown(f"**{item.get('miejsce')}** ({item.get('termin')})")
+                    c1, c2 = st.columns(2)
+                    if c1.button("↩️ Przywróć", key=f"res_o_{i}"):
+                        dane["odbiory"].append(dane["odbiory_historia"].pop(i))
+                        zapisz_dane(dane); st.rerun()
+                    if c2.button("❌ Usuń trwale", key=f"fdel_o_{i}"):
+                        dane["odbiory_historia"].pop(i)
+                        zapisz_dane(dane); st.rerun()
+                    st.divider()
+
+            elif kat == "Przyjęcia (Historia)":
+                for i, item in enumerate(dane["przyjecia_historia"]):
+                    st.markdown(f"**{item.get('dostawca')}** ({item.get('termin')})")
+                    c1, c2 = st.columns(2)
+                    if c1.button("↩️ Przywróć", key=f"res_pz_{i}"):
+                        dane["przyjecia"].append(dane["przyjecia_historia"].pop(i))
+                        zapisz_dane(dane); st.rerun()
+                    if c2.button("❌ Usuń trwale", key=f"fdel_pz_{i}"):
+                        dane["przyjecia_historia"].pop(i)
+                        zapisz_dane(dane); st.rerun()
+                    st.divider()
+
+            elif kat == "Dyspozycje (Historia)":
+                for i, item in enumerate(dane["dyspozycje_historia"]):
+                    st.markdown(f"**{item.get('tytul')}** ({item.get('termin')})")
+                    c1, c2 = st.columns(2)
+                    if c1.button("↩️ Przywróć", key=f"res_d_{i}"):
+                        dane["dyspozycje"].append(dane["dyspozycje_historia"].pop(i))
+                        zapisz_dane(dane); st.rerun()
+                    if c2.button("❌ Usuń trwale", key=f"fdel_d_{i}"):
+                        dane["dyspozycje_historia"].pop(i)
+                        zapisz_dane(dane); st.rerun()
+                    st.divider()
         st.divider()
 
     st.markdown('<div class="sidebar-header">➕ DODAJ NOWY WPIS</div>', unsafe_allow_html=True)
@@ -252,15 +305,9 @@ with st.sidebar:
             if st.form_submit_button("💾 Zapisz"):
                 if tyt: dane["dyspozycje"].append({"tytul":tyt,"termin":tm,"opis":op,"data_p":datetime.now().strftime("%d.%m %H:%M"),"autor":st.session_state.user}); zapisz_dane(dane); st.rerun()
 
-    # --- CENTRUM ROZPISKI TRANSPORTU W SIDEBARZE ---
     st.markdown('<div class="sidebar-print-header">🖨️ DRUKOWANIE PLANU DNIA</div>', unsafe_allow_html=True)
     data_do_druku = st.text_input("Data do rozpiski:", value=datetime.now().strftime("%d.%m"))
-    st.download_button(
-        label="📥 Pobierz Rozpiskę (Plan)", 
-        data=generuj_rozpiske_zbiorcza(data_do_druku, dane["w_realizacji"], dane["odbiory"]), 
-        file_name=f"Rozpiska_{data_do_druku}.html", 
-        mime="text/html"
-    )
+    st.download_button(label="📥 Pobierz Rozpiskę (Plan)", data=generuj_rozpiske_zbiorcza(data_do_druku, dane["w_realizacji"], dane["odbiory"]), file_name=f"Rozpiska_{data_do_druku}.html", mime="text/html")
 
     if st.session_state.user == "admin":
         st.divider()
