@@ -102,7 +102,7 @@ div[data-testid="stPopover"] > button { min-height: 32px !important; height: 32p
 .label-text { font-size: 11px; color: #6c757d; font-weight: 700; text-transform: uppercase; border-bottom: 1px solid #dee2e6; padding-bottom: 4px;}
 button[data-baseweb="tab"] { font-size: 16px !important; font-weight: 600 !important; }
 
-/* Styl dla bezpośredniego wyświetlania tekstu produktów w tabeli */
+/* Styl dla podglądu bezpośredniego szczegółów */
 .readonly-text { 
     font-size: 13px; 
     white-space: pre-wrap; 
@@ -203,7 +203,7 @@ def generuj_rozpiske_zbiorcza(data_cel, lista_zlecen, lista_odbiorow):
         grupy[key]["odb"].append(o)
         
     if not grupy:
-        html += "<h2 style='text-align:center;'>Brak zadań na ten dzień.</h2>"
+        html += f"<h2 style='text-align:center;'>Brak zadań na dzień {data_cel}.</h2>"
     else:
         for (tr, kr), content in grupy.items():
             label = f"{tr} / KURS NR {kr}" if tr in ["Auto 1", "Auto 2"] else tr
@@ -329,12 +329,7 @@ with st.sidebar:
             for k in ["w_realizacji","zrealizowane","przyjecia","przyjecia_historia","dyspozycje","dyspozycje_historia","odbiory","odbiory_historia","tablica"]: dane[k] = []
             zapisz_dane(dane); st.rerun()
 
-# --- 5. STATYSTYKI ---
-st.markdown('<div class="section-header">Podsumowanie</div>', unsafe_allow_html=True)
-c_s1, c_s2, c_s3, c_s4 = st.columns(4)
-c_s1.metric("📦 Zlecenia", len(dane["w_realizacji"])); c_s2.metric("🔄 Odbiory", len(dane["odbiory"])); c_s3.metric("🚚 Przyjęcia", len(dane["przyjecia"])); c_s4.metric("📋 Dyspozycje", len(dane["dyspozycje"]))
-
-# --- 6. TERMINARZ TYGODNIOWY ---
+# --- 5. TERMINARZ TYGODNIOWY ---
 st.markdown('<div class="section-header">Terminarz Tygodniowy</div>', unsafe_allow_html=True)
 if "wo" not in st.session_state: st.session_state.wo = 0
 cn1, _, cn3 = st.columns([1,4,1])
@@ -386,7 +381,7 @@ for i in range(7):
                 if dd == dv and dm == mv: st.markdown(f"<div class='cal-entry-task' title='{d.get('opis')}'>D: {d.get('tytul')}</div>", unsafe_allow_html=True)
             except: pass
 
-# --- 7. TABELE REALIZACJI ---
+# --- 6. TABELE REALIZACJI ---
 st.markdown('<div class="section-header">Tabele Realizacji</div>', unsafe_allow_html=True)
 search = st.text_input("🔍 Szukaj...", "").lower()
 t_prod, t_odb, t_log, t_dysp = st.tabs(["🏭 Produkcja", "🔄 Odbiory (Powroty)", "🚚 Przyjęcia (PZ)", "📋 Dyspozycje"])
@@ -440,8 +435,7 @@ with t_odb:
         if not dane["odbiory"]: st.info("Brak aktywnych odbiorów.")
         else:
             hc = st.columns([2.0, 1.2, 5.0, 1.2, 0.6])
-            hc[0].markdown('<div class="label-text">Dostawca / Skąd</div>', unsafe_allow_html=True); hc[1].markdown('<div class="label-text">Termin</div>', unsafe_allow_html=True)
-            hc[2].markdown(f'<div class="label-text">{"Co odebrać?" if is_readonly else "Menu"}</div>', unsafe_allow_html=True)
+            hc[0].markdown('<div class="label-text">Dostawca / Skąd</div>', unsafe_allow_html=True); hc[1].markdown('<div class="label-text">Termin</div>', unsafe_allow_html=True); hc[2].markdown(f'<div class="label-text">{"Co odebrać?" if is_readonly else "Menu"}</div>', unsafe_allow_html=True)
             last_o = None
             for i, o in enumerate(dane["odbiory"]):
                 if search and search not in str(o).lower(): continue
@@ -465,8 +459,7 @@ with t_log:
         if not dane["przyjecia"]: st.info("Brak aktywnych dostaw.")
         else:
             hc = st.columns([2.0, 1.2, 5.0, 1.2, 0.6])
-            hc[0].markdown('<div class="label-text">Dostawca</div>', unsafe_allow_html=True); hc[1].markdown('<div class="label-text">Termin</div>', unsafe_allow_html=True)
-            hc[2].markdown(f'<div class="label-text">{"Zawartość" if is_readonly else "Menu"}</div>', unsafe_allow_html=True)
+            hc[0].markdown('<div class="label-text">Dostawca</div>', unsafe_allow_html=True); hc[1].markdown('<div class="label-text">Termin</div>', unsafe_allow_html=True); hc[2].markdown(f'<div class="label-text">{"Zawartość" if is_readonly else "Menu"}</div>', unsafe_allow_html=True)
             last_p = None
             for i, p in enumerate(dane["przyjecia"]):
                 if search and search not in str(p).lower(): continue
@@ -506,7 +499,7 @@ with t_dysp:
                     if c[4].button("X", key=f"dx_{u_id}"): dane["dyspozycje"].pop(i); zapisz_dane(dane); st.rerun()
     with td2: st.dataframe(dane["dyspozycje_historia"][::-1], use_container_width=True)
 
-# --- 8. TABLICA OGŁOSZEŃ (NA STAŁE NA DOLE) ---
+# --- 7. TABLICA OGŁOSZEŃ (NA STAŁE NA DOLE) ---
 st.markdown("<br><hr style='border: 2px solid #343a40;'><br>", unsafe_allow_html=True)
 st.markdown('<div class="section-header">📌 Tablica Ogłoszeń i Komunikaty</div>', unsafe_allow_html=True)
 
@@ -521,7 +514,6 @@ if can_edit:
 if not dane["tablica"]:
     st.info("Tablica jest pusta.")
 else:
-    # Wyświetlamy notatki w kolumnach, żeby nie zajmowały za dużo miejsca pionowo
     notes_cols = st.columns(3)
     for i, note in enumerate(reversed(dane["tablica"])):
         real_idx = len(dane["tablica"]) - 1 - i
