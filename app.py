@@ -1,6 +1,7 @@
 import streamlit as st
 import json
 import os
+import pandas as pd
 from datetime import datetime, timedelta
 
 # --- 1. KONFIGURACJA I STYLIZACJA ---
@@ -28,6 +29,13 @@ button:has(div p:contains("X")), button:contains("X") {
 button:has(div p:contains("Zapisz")), button:contains("Zapisz") {
     border: none !important; color: white !important; background-color: #007bff !important;
 }
+button:has(div p:contains("Zaloguj się")), button:contains("Zaloguj się") {
+    border: none !important; color: white !important; background-color: #1e7e34 !important; height: 40px !important; font-size: 14px; margin-top: 10px;
+}
+button:has(div p:contains("Zaloguj się")):hover, button:contains("Zaloguj się"):hover {
+    background-color: #155724 !important;
+}
+
 .stDownloadButton>button { border: 2px solid #212529 !important; background-color: #f8f9fa !important; color: #212529 !important; }
 .stDownloadButton>button:hover { background-color: #212529 !important; color: white !important; }
 
@@ -68,103 +76,6 @@ div[data-testid="stHorizontalBlock"] { align-items: center !important; }
 div[data-testid="stHorizontalBlock"] p { margin-bottom: 0 !important; }
 </style>
 """, unsafe_allow_html=True)
-
-# Zmienne sesyjne
-if "print_order" not in st.session_state: st.session_state.print_order = None
-
-# --- WIDOK DRUKOWANIA (Karta A4) ---
-if st.session_state.print_order is not None:
-    z = st.session_state.print_order
-    
-    st.markdown("""
-<style>
-/* Ukrywamy elementy interfejsu aplikacji na czas drukowania */
-[data-testid="stSidebar"] {display: none;}
-header {display: none;}
-.stApp {background-color: white;}
-
-@media print {
-    .no-print {display: none !important;}
-    body {background-color: white;}
-}
-
-.print-card {
-    border: 4px solid #212529; padding: 40px; margin: 20px auto; max-width: 900px;
-    background: white; color: #212529; font-family: 'Arial', sans-serif;
-}
-.print-title { text-align: center; font-size: 36px; font-weight: 900; border-bottom: 4px solid #212529; padding-bottom: 15px; margin-bottom: 30px; text-transform: uppercase; }
-.print-row { display: flex; margin-bottom: 25px; }
-.print-col { flex: 1; padding-right: 20px;}
-.print-label { font-size: 14px; font-weight: 700; color: #6c757d; text-transform: uppercase; margin-bottom: 5px; }
-.print-val { font-size: 26px; font-weight: 800; }
-.print-val-text { font-size: 22px; white-space: pre-wrap; font-weight: 500; }
-.print-urgent { color: #dc3545; border: 5px solid #dc3545; font-size: 30px; font-weight: 900; text-align: center; padding: 15px; margin-bottom: 30px; text-transform: uppercase; letter-spacing: 2px;}
-</style>
-""", unsafe_allow_html=True)
-    
-    st.markdown('<div class="no-print">', unsafe_allow_html=True)
-    col_btn1, col_btn2 = st.columns([1, 4])
-    with col_btn1:
-        if st.button("⬅️ Wróć do systemu"):
-            st.session_state.print_order = None
-            st.rerun()
-    with col_btn2:
-        st.info("🖨️ Naciśnij **Ctrl + P** na klawiaturze, aby wydrukować tę kartę. Możesz ją potem przypiąć na tablicy!")
-    st.markdown('</div>', unsafe_allow_html=True)
-    
-    pilne_html = '<div class="print-urgent">🔥 ZLECENIE PILNE 🔥</div>' if z.get('pilne') else ''
-    auto_val = z.get('auto', 'Brak')
-    k_val = z.get('kurs', 1)
-    transport_str = f"{auto_val} / Kurs nr {k_val}" if auto_val in ["Auto 1", "Auto 2"] else auto_val
-    
-    html_karta = f"""
-<div class="print-card">
-{pilne_html}
-<div class="print-title">Karta Zlecenia Produkcyjnego</div>
-
-<div class="print-row">
-<div class="print-col">
-<div class="print-label">Klient / Firma</div>
-<div class="print-val">{z.get('klient', '-')}</div>
-</div>
-<div class="print-col">
-<div class="print-label">Termin Realizacji</div>
-<div class="print-val">{z.get('termin', '-')}</div>
-</div>
-</div>
-
-<div class="print-row">
-<div class="print-col">
-<div class="print-label">Transport / Logistyka</div>
-<div class="print-val">{transport_str}</div>
-</div>
-<div class="print-col">
-<div class="print-label">Data dodania (Kto dodał)</div>
-<div class="print-val" style="font-size: 20px;">{z.get('data_p', '-')} ({z.get('autor', '-')})</div>
-</div>
-</div>
-
-<hr style="border-top: 3px dashed #dee2e6; margin: 30px 0;">
-
-<div style="margin-bottom: 30px;">
-<div class="print-label">Specyfikacja Ogólna</div>
-<div class="print-val-text">{z.get('opis', 'Brak specyfikacji')}</div>
-</div>
-
-<div>
-<div class="print-label">Szczegóły Zamówienia (Ilości, Wymiary)</div>
-<div class="print-val-text">{z.get('szczegoly', 'Brak szczegółów')}</div>
-</div>
-
-<div style="margin-top: 100px; text-align: right;">
-<div style="display: inline-block; width: 300px; border-top: 2px solid #000; padding-top: 10px; text-align: center; color: #212529; font-weight: bold; font-size: 16px;">
-Podpis pracownika (Zrobione)
-</div>
-</div>
-</div>
-"""
-    st.markdown(html_karta, unsafe_allow_html=True)
-    st.stop()  
 
 # --- 2. LOGIKA BAZY DANYCH I SORTOWANIE ---
 PLIK_DANYCH = "baza_gropak_v3.json"
@@ -282,19 +193,74 @@ def generuj_html_do_druku(z):
 </body>
 </html>"""
 
-# --- 3. SYSTEM LOGOWANIA ---
+# Zmienne sesyjne
+if "print_order" not in st.session_state: st.session_state.print_order = None
+
+# --- WIDOK DRUKOWANIA (Karta A4) ---
+if st.session_state.print_order is not None:
+    z = st.session_state.print_order
+    st.markdown("""<style>[data-testid="stSidebar"] {display: none;} header {display: none;}</style>""", unsafe_allow_html=True)
+    st.markdown('<div class="no-print">', unsafe_allow_html=True)
+    col_btn1, col_btn2 = st.columns([1, 4])
+    with col_btn1:
+        if st.button("⬅️ Wróć do systemu"): st.session_state.print_order = None; st.rerun()
+    with col_btn2: st.info("🖨️ Naciśnij **Ctrl + P** na klawiaturze, aby wydrukować.")
+    st.markdown('</div>', unsafe_allow_html=True)
+    
+    pilne_html = '<div style="color: #dc3545; border: 5px solid #dc3545; font-size: 30px; font-weight: 900; text-align: center; padding: 15px; margin-bottom: 30px;">🔥 ZLECENIE PILNE 🔥</div>' if z.get('pilne') else ''
+    st.markdown(f"""<div style="border: 4px solid #212529; padding: 40px; margin: 20px auto; max-width: 900px; background: white; color: #212529; font-family: 'Arial';">
+    {pilne_html} <h1 style="text-align: center; font-weight: 900; border-bottom: 4px solid #212529; padding-bottom: 15px; margin-bottom: 30px;">Karta Zlecenia</h1>
+    <p><b>Klient:</b> {z.get('klient', '-')}</p><p><b>Termin:</b> {z.get('termin', '-')}</p><p><b>Transport:</b> {z.get('auto', 'Brak')}</p><hr>
+    <p><b>Specyfikacja:</b><br>{z.get('opis', '-')}</p><p><b>Szczegóły:</b><br>{z.get('szczegoly', '-')}</p>
+    </div>""", unsafe_allow_html=True)
+    st.stop()  
+
+# --- 3. SYSTEM LOGOWANIA (NOWY EKRAN) ---
 if "user" not in st.session_state: st.session_state.user = None
 if not st.session_state.user:
-    st.subheader("GROPAK ERP - Logowanie")
-    with st.form("login_form"):
-        u = st.text_input("Użytkownik"); p = st.text_input("Hasło", type="password")
-        if st.form_submit_button("Zaloguj"):
-            if u in dane["uzytkownicy"] and dane["uzytkownicy"][u] == p: st.session_state.user = u; st.rerun()
-            else: st.error("Błąd logowania")
+    # Ukrywamy pasek boczny na ekranie logowania
+    st.markdown('<style>[data-testid="stSidebar"] {display: none;}</style>', unsafe_allow_html=True)
+    
+    # Wyśrodkowana karta logowania
+    st.markdown("<br><br><br>", unsafe_allow_html=True)
+    _, col_login, _ = st.columns([1, 1.5, 1])
+    
+    with col_login:
+        st.markdown("""
+            <div style='text-align: center; margin-bottom: 20px; padding: 30px; background: white; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid #e9ecef;'>
+                <div style='font-size: 60px; margin-bottom: 10px;'>📦</div>
+                <h1 style='font-weight: 900; color: #1e7e34; margin: 0; letter-spacing: 1px;'>GROPAK ERP</h1>
+                <p style='color: #6c757d; font-size: 16px; margin-top: 5px; margin-bottom: 25px;'>System Zarządzania Produkcją i Logistyką</p>
+        """, unsafe_allow_html=True)
+        
+        with st.form("login_form"):
+            u = st.text_input("👤 Login użytkownika")
+            p = st.text_input("🔒 Hasło dostępu", type="password")
+            if st.form_submit_button("Zaloguj się do systemu"):
+                if u in dane["uzytkownicy"] and dane["uzytkownicy"][u] == p:
+                    st.session_state.user = u
+                    st.rerun()
+                else: 
+                    st.error("Błąd logowania. Sprawdź login i hasło.")
+        
+        st.markdown("</div>", unsafe_allow_html=True)
     st.stop()
 
 # --- 4. PANEL BOCZNY ---
 with st.sidebar:
+    # --- LOGO W PANELU BOCZNYM ---
+    # Jeśli masz własne logo jako plik, odznacz linijkę poniżej i podaj nazwę pliku (np. 'logo.png')
+    # st.image("logo.png", use_container_width=True)
+    
+    # Domyślne logo z użyciem tekstu i CSS
+    st.markdown("""
+        <div style="text-align: center; margin-bottom: 25px; padding-bottom: 15px; border-bottom: 1px solid #dee2e6;">
+            <div style="font-size: 45px;">📦</div>
+            <h2 style="color: #1e7e34; font-weight: 900; margin: 0; letter-spacing: 1px; font-size: 26px;">GROPAK</h2>
+            <p style="color: #6c757d; font-size: 11px; margin: 0; font-weight: bold; letter-spacing: 2px;">ERP SYSTEM</p>
+        </div>
+    """, unsafe_allow_html=True)
+
     st.write(f"Zalogowany: **{st.session_state.user}**")
     if st.button("🚪 Wyloguj"): st.session_state.user = None; st.rerun()
     st.divider()
