@@ -66,7 +66,7 @@ st.markdown("""
     .cal-entry-task { cursor: help; font-size: 10.5px; background: #fff4e6; color: #d9480f; border-left: 3px solid #d9480f; padding: 5px 6px; margin-bottom: 5px; border-radius: 4px; font-weight: 600; line-height: 1.2;}
     
     .badge-urgent { background-color: #dc3545; color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold; margin-left: 5px; }
-    .car-badge { background-color: #343a40; color: white; padding: 2px 5px; border-radius: 4px; font-size: 9.5px; margin-right: 5px; }
+    .car-badge { background-color: #343a40; color: white; padding: 2px 5px; border-radius: 4px; font-size: 9.5px; margin-right: 5px; display: inline-block; margin-bottom: 2px;}
     .label-text { font-size: 11px; color: #6c757d; font-weight: 700; text-transform: uppercase; margin-bottom: 5px; }
     button[data-baseweb="tab"] { font-size: 16px !important; font-weight: 600 !important; }
     </style>
@@ -74,6 +74,7 @@ st.markdown("""
 
 # --- 2. LOGIKA BAZY DANYCH I SORTOWANIE ---
 PLIK_DANYCH = "baza_gropak_v3.json"
+OPCJE_TRANSPORTU = ["Brak", "Auto 1", "Auto 2", "Transport zewnętrzny", "Odbiór osobisty", "Kurier"]
 
 def posortuj_dane(dane):
     def sort_key(item):
@@ -116,6 +117,15 @@ def zapisz_dane(dane):
         json.dump(dane, f, indent=4)
 
 dane = wczytaj_dane()
+
+# --- Funkcja generująca etykietę transportu ---
+def generuj_badge_auta(auto_val, kurs_val):
+    if auto_val == "Auto 1": return f'<span class="car-badge">🚗 1/K{kurs_val}</span>'
+    elif auto_val == "Auto 2": return f'<span class="car-badge">🚗 2/K{kurs_val}</span>'
+    elif auto_val == "Transport zewnętrzny": return f'<span class="car-badge" style="background-color:#17a2b8;">🚛 Zewn.</span>'
+    elif auto_val == "Odbiór osobisty": return f'<span class="car-badge" style="background-color:#28a745;">🚶 Odbiór</span>'
+    elif auto_val == "Kurier": return f'<span class="car-badge" style="background-color:#fd7e14;">📦 Kurier</span>'
+    return ""
 
 # --- 3. SYSTEM LOGOWANIA ---
 if "user" not in st.session_state: st.session_state.user = None
@@ -165,9 +175,8 @@ with st.sidebar:
             sz = st.text_area("📦 Szczegółowe zamówienie (ilości itp.)")
             
             st.markdown("**🚛 Logistyka Wyjazdowa:**")
-            col_a, col_k = st.columns(2)
-            auto = col_a.selectbox("Wybierz auto:", ["Brak", "Auto 1", "Auto 2"])
-            kurs = col_k.selectbox("Numer kursu:", [1, 2, 3, 4, 5])
+            auto = st.selectbox("Wybierz transport:", OPCJE_TRANSPORTU)
+            kurs = st.selectbox("Numer kursu (dla aut własnych):", [1, 2, 3, 4, 5])
             
             p = st.checkbox("🔥 Oznacz jako PILNE")
             if st.form_submit_button("💾 Zapisz Zlecenie"):
@@ -240,18 +249,15 @@ for i, date in enumerate(dates_in_week):
     
     d_val, m_val = date.day, date.month
     
-    # PRODUKCJA - Zabezpieczone Tooltipy i Auta
+    # PRODUKCJA - Tooltipy i rozbudowany transport
     for z in dane["w_realizacji"]:
         zd, zm = parse_d(z.get('termin', ''))
         if zd == d_val and zm == m_val:
             p_mark = "🔥 " if z.get('pilne') else ""
             
-            # Bezpieczne pobieranie auta (obsługa starych wpisów)
             auto_val = str(z.get('auto', 'Brak'))
-            if auto_val in ["Auto 1", "Auto 2"]:
-                a_mark = f'<span class="car-badge">🚗 {auto_val[-1]}/{z.get("kurs", 1)}</span>'
-            else:
-                a_mark = ""
+            kurs_val = z.get('kurs', 1)
+            a_mark = generuj_badge_auta(auto_val, kurs_val)
                 
             opis_safe = str(z.get('opis', '')).replace('"', '&quot;')
             szczegoly_safe = str(z.get('szczegoly', '')).replace('"', '&quot;')
@@ -297,7 +303,7 @@ with tab_prod:
     with tp1:
         if not dane["w_realizacji"]: st.info("Brak aktywnych zleceń.")
         else:
-            st.markdown('<div style="display: flex; padding-left: 5px;"><div class="label-text" style="width: 16%;">Klient / Auto</div><div class="label-text" style="width: 13%;">Termin</div><div class="label-text" style="width: 13%;">Dodano</div><div class="label-text">Więcej informacji / Edycja</div></div>', unsafe_allow_html=True)
+            st.markdown('<div style="display: flex; padding-left: 5px;"><div class="label-text" style="width: 16%;">Klient / Transport</div><div class="label-text" style="width: 13%;">Termin</div><div class="label-text" style="width: 13%;">Dodano</div><div class="label-text">Więcej informacji / Edycja</div></div>', unsafe_allow_html=True)
             for i, z in enumerate(dane["w_realizacji"]):
                 klient = str(z.get('klient', 'Brak'))
                 opis = str(z.get('opis', ''))
@@ -310,7 +316,8 @@ with tab_prod:
                 # Etykieta pilne i auto
                 b_pilne = '<span class="badge-urgent">PILNE</span>' if z.get('pilne') else ''
                 auto_val = str(z.get('auto', 'Brak'))
-                b_auto = f'<span class="car-badge">🚗 {auto_val[-1]}/{z.get("kurs", 1)}</span>' if auto_val in ["Auto 1", "Auto 2"] else ''
+                kurs_val = z.get('kurs', 1)
+                b_auto = generuj_badge_auta(auto_val, kurs_val)
                 
                 c[0].markdown(f"**{klient}**<br>{b_auto} {b_pilne}", unsafe_allow_html=True)
                 
@@ -322,15 +329,14 @@ with tab_prod:
                 with c[3].popover("Pokaż / Edytuj szczegóły"):
                     st.markdown("**🚛 Edycja Transportu:**")
                     c_a, c_k = st.columns(2)
-                    na = c_a.selectbox("Auto:", ["Brak", "Auto 1", "Auto 2"], index=["Brak", "Auto 1", "Auto 2"].index(auto_val) if auto_val in ["Brak", "Auto 1", "Auto 2"] else 0, key=f"na{i}")
+                    idx = OPCJE_TRANSPORTU.index(auto_val) if auto_val in OPCJE_TRANSPORTU else 0
+                    na = c_a.selectbox("Transport:", OPCJE_TRANSPORTU, index=idx, key=f"na{i}")
                     
-                    # Bezpieczny kurs
                     k_val = z.get('kurs', 1)
                     try: k_val = int(k_val)
                     except: k_val = 1
                     if k_val not in [1, 2, 3, 4, 5]: k_val = 1
-                    
-                    nk = c_k.selectbox("Kurs:", [1, 2, 3, 4, 5], index=k_val-1, key=f"nk{i}")
+                    nk = c_k.selectbox("Kurs (tylko auta):", [1, 2, 3, 4, 5], index=k_val-1, key=f"nk{i}")
                     
                     st.markdown("**📝 Edycja Opisów:**")
                     no = st.text_area("Specyfikacja ogólna", value=opis, key=f"zo{i}")
