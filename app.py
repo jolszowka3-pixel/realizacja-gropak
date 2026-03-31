@@ -241,7 +241,6 @@ with t_prod:
         if not dane["w_realizacji"]: 
             st.info("Brak aktywnych zleceń.")
         else:
-            # SZYTWNE NAGŁÓWKI (KULOODPORNE)
             hc = st.columns([1.5, 1.2, 1.2, 4.5, 0.8, 0.4])
             hc[0].markdown('<div class="label-text">Klient</div>', unsafe_allow_html=True)
             hc[1].markdown('<div class="label-text">Termin</div>', unsafe_allow_html=True)
@@ -253,7 +252,6 @@ with t_prod:
             for i, z in enumerate(dane["w_realizacji"]):
                 if search and search not in str(z).lower(): continue
                 
-                # Zabezpieczenie przed błędami w danych kursów
                 k_val = z.get('kurs', 1)
                 try: k_val = int(k_val)
                 except: k_val = 1
@@ -273,7 +271,7 @@ with t_prod:
                 
                 status = z.get('status', 'W produkcji')
                 b_status = '<span class="badge-status-ready">✅ GOTOWE</span>' if status == 'Gotowe' else '<span class="badge-status-prod">⏳ PRODUKCJA</span>'
-                c[0].markdown(f"**{z.get('klient')}** {'🔥' if z.get('pilne') else ''} {b_status}", unsafe_allow_html=True)
+                c[0].markdown(f"**{z.get('klient')}** {'🔥' if z.get('pilne') else ''} <br>{b_status}", unsafe_allow_html=True)
                 
                 nt = c[1].text_input("T", value=z.get('termin'), key=f"zt{i}", label_visibility="collapsed")
                 if nt != z.get('termin'): dane["w_realizacji"][i]['termin'] = nt; zapisz_dane(dane); st.rerun()
@@ -332,7 +330,8 @@ with t_log:
                 if c[4].button("OK", key=f"lg{i}"): dane["przyjecia_historia"].append(dane["przyjecia"].pop(i)); zapisz_dane(dane); st.rerun()
                 if c[5].button("X", key=f"lx{i}"): dane["przyjecia"].pop(i); zapisz_dane(dane); st.rerun()
 
-with t_d:
+# Tutaj był błąd z t_d zamiast t_dysp. Zmienione na poprawne:
+with t_dysp:
     td1, td2 = st.tabs(["W toku", "Historia"])
     with td1:
         if not dane["dyspozycje"]:
