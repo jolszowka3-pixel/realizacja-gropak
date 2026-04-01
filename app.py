@@ -72,6 +72,7 @@ button:has(div p:contains("Przywróć")), button:contains("Przywróć") {
 .cal-entry-task { background: #fff4e6; color: #d9480f; border-left: 3px solid #d9480f; }
 
 /* TABELE REALIZACJI */
+.table-group-header { background-color: #e9ecef; color: #212529; padding: 6px 12px; font-weight: 700; font-size: 12px; border-radius: 4px; margin: 15px 0 8px 0; border-left: 4px solid #007bff; }
 .badge-status-prod { background-color: #ffc107; color: #212529; padding: 2px 5px; border-radius: 4px; font-size: 9px; font-weight: bold; margin-left: 5px; display: inline-block;}
 .badge-status-ready { background-color: #28a745; color: white; padding: 2px 5px; border-radius: 4px; font-size: 9px; font-weight: bold; margin-left: 5px; display: inline-block;}
 .badge-status-return { background-color: #7b1fa2; color: white; padding: 2px 5px; border-radius: 4px; font-size: 9px; font-weight: bold; margin-left: 5px; display: inline-block;}
@@ -278,7 +279,7 @@ if "notif_seen" not in st.session_state: st.session_state.notif_seen = False
 if not st.session_state.notif_seen:
     st.info("System operacyjny gotowy.")
 
-# --- 7. TERMINARZ TYGODNIOWY (Z TOOLTIPAMI) ---
+# --- 7. TERMINARZ TYGODNIOWY ---
 st.markdown('<div class="section-header">Terminarz Tygodniowy</div>', unsafe_allow_html=True)
 if "wo" not in st.session_state: st.session_state.wo = 0
 cn1, _, cn3 = st.columns([1,4,1])
@@ -312,17 +313,13 @@ for i in range(7):
             all_r = all(it.get('status')=='Gotowe' for it in cnt["p"])
             cl = "cal-entry-ready" if (all_r and cnt["p"]) else "cal-entry-out"
             lbl = f"{tr}/K{kr}" if tr in ["Auto 1","Auto 2"] else tr
-            
-            # BUDOWANIE TOOLTIPA DLA KURSU
             tt_lines = ["KLIENCI W TYM KURSIE:"]
             for it in cnt["p"]: tt_lines.append(f"• {it.get('klient')} ({str(it.get('szczegoly',''))[:40]}...)")
             if cnt["o"]:
                 tt_lines.append("")
                 tt_lines.append("ODBIORY OSOBISTE / INNE:")
                 for it in cnt["o"]: tt_lines.append(f"• {it.get('miejsce')} ({str(it.get('towar',''))[:40]}...)")
-            
             tooltip_html = "&#10;".join(tt_lines).replace("'", "&apos;").replace('"', "&quot;")
-            
             st.markdown(f"<div class='{cl}' title='{tooltip_html}'>{lbl} ({len(cnt['p'])+len(cnt['o'])})</div>", unsafe_allow_html=True)
             if cnt["o"]: st.markdown(f"<div class='cal-entry-return' style='height:3px; margin-top:-4px;'></div>", unsafe_allow_html=True)
             
@@ -341,7 +338,7 @@ for i in range(7):
                     st.markdown(f"<div class='cal-entry-task' title='{tip_d}'>D: {d.get('tytul')}</div>", unsafe_allow_html=True)
             except: pass
 
-# --- 8. TABELE REALIZACJI (UJEDNOLICONE) ---
+# --- 8. TABELE REALIZACJI (UJEDNOLICONE + SEPARATORY DNI) ---
 st.markdown('<div class="section-header">Listy Realizacji</div>', unsafe_allow_html=True)
 search = st.text_input("🔍 Szukaj we wszystkich wpisach...", "").lower()
 tabs = st.tabs(["🏭 Produkcja", "🔄 Odbiory", "🚚 Przyjęcia PZ", "📋 Dyspozycje"])
@@ -363,9 +360,10 @@ def renderuj_tabele_ujednolicona(lista_zrodlowa, klucz_nazwa, klucz_szczegoly, k
         if typ_sekcji == "plan" and ma_termin: continue
         if search and search not in str(item).lower(): continue
         
+        # DODANY SEPARATOR DNI
         curr_date = item.get('termin', '---')
         if curr_date != last_date and typ_sekcji != "plan":
-            st.markdown(f"<div class='table-group-header'>📅 {curr_date}</div>", unsafe_allow_html=True)
+            st.markdown(f"<div class='table-group-header'>📅 TERMIN: {curr_date}</div>", unsafe_allow_html=True)
             last_date = curr_date
             
         c = st.columns([2.0, 1.2, 5.0, 1.2, 0.6])
@@ -407,22 +405,22 @@ def renderuj_tabele_ujednolicona(lista_zrodlowa, klucz_nazwa, klucz_szczegoly, k
                 lista_zrodlowa.pop(i); zapisz_dane(dane); st.rerun()
 
 with tabs[0]:
-    s1, s2, s3 = st.tabs(["Aktywne", "📂 Do zaplanowania", "Historia"])
-    with s1: renderuj_tabele_ujednolicona(dane["w_realizacji"], "klient", "szczegoly", "prod", "produkcja")
-    with s2: renderuj_tabele_ujednolicona(dane["w_realizacji"], "klient", "szczegoly", "prod", "plan")
-    with s3: st.dataframe(dane["zrealizowane"][::-1], use_container_width=True)
+    sub1, sub2, sub3 = st.tabs(["Aktywne", "📂 Do zaplanowania", "Historia"])
+    with sub1: renderuj_tabele_ujednolicona(dane["w_realizacji"], "klient", "szczegoly", "prod", "produkcja")
+    with sub2: renderuj_tabele_ujednolicona(dane["w_realizacji"], "klient", "szczegoly", "prod", "plan")
+    with sub3: st.dataframe(dane["zrealizowane"][::-1], use_container_width=True)
 with tabs[1]:
-    s1, s2 = st.tabs(["Aktywne", "Historia"])
-    with s1: renderuj_tabele_ujednolicona(dane["odbiory"], "miejsce", "towar", "odb", "active")
-    with s2: st.dataframe(dane["odbiory_historia"][::-1], use_container_width=True)
+    sub1, sub2 = st.tabs(["Aktywne", "Historia"])
+    with sub1: renderuj_tabele_ujednolicona(dane["odbiory"], "miejsce", "towar", "odb", "active")
+    with sub2: st.dataframe(dane["odbiory_historia"][::-1], use_container_width=True)
 with tabs[2]:
-    s1, s2 = st.tabs(["Aktywne", "Historia"])
-    with s1: renderuj_tabele_ujednolicona(dane["przyjecia"], "dostawca", "towar", "pz", "active")
-    with s2: st.dataframe(dane["przyjecia_historia"][::-1], use_container_width=True)
+    sub1, sub2 = st.tabs(["Aktywne", "Historia"])
+    with sub1: renderuj_tabele_ujednolicona(dane["przyjecia"], "dostawca", "towar", "pz", "active")
+    with sub2: st.dataframe(dane["przyjecia_historia"][::-1], use_container_width=True)
 with tabs[3]:
-    s1, s2 = st.tabs(["Aktywne", "Historia"])
-    with s1: renderuj_tabele_ujednolicona(dane["dyspozycje"], "tytul", "opis", "dysp", "active")
-    with s2: st.dataframe(dane["dyspozycje_historia"][::-1], use_container_width=True)
+    sub1, sub2 = st.tabs(["Aktywne", "Historia"])
+    with sub1: renderuj_tabele_ujednolicona(dane["dyspozycje"], "tytul", "opis", "dysp", "active")
+    with sub2: st.dataframe(dane["dyspozycje_historia"][::-1], use_container_width=True)
 
 # --- 9. TABLICA OGŁOSZEŃ ---
 st.markdown("<br><hr style='border: 2px solid #343a40;'><br>", unsafe_allow_html=True)
