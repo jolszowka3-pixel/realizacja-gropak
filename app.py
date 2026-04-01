@@ -1,15 +1,13 @@
 import streamlit as st
-from streamlit_gsheets import GSheetsConnection
-import json
+from google.oauth2 import service_account
 
-st.title("GROPAK ERP - TEST POŁĄCZENIA")
+# Pobranie danych ze Streamlit Secrets
+creds_dict = st.secrets["gcp_service_account"]
 
-# Połączenie
-conn = st.connection("gsheets", type=GSheetsConnection)
+# Stworzenie obiektu credentials
+credentials = service_account.Credentials.from_service_account_info(creds_dict)
 
-# Odczyt
-df = conn.read(worksheet="Sheet1", usecols=[0], ttl=0)
-dane = json.loads(df.iloc[0, 0])
+# Przykład: Użycie credentials do połączenia np. z BigQuery lub Google Sheets
+# client = bigquery.Client(credentials=credentials, project=creds_dict["project_id"])
 
-st.success("Połączono z bazą!")
-st.write("Aktualna liczba zleceń:", len(dane["w_realizacji"]))
+st.write("Połączono pomyślnie z projektem:", creds_dict["project_id"])
