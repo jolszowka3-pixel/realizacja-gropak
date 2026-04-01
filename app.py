@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 import gspread
 from google.oauth2 import service_account
 
-# --- 1. KONFIGURACJA I STYLIZACJA (ZACHOWANA) ---
+# --- 1. KONFIGURACJA I STYLIZACJA ---
 st.set_page_config(page_title="GROPAK ERP", layout="wide")
 
 st.markdown("""
@@ -129,6 +129,31 @@ def posortuj_dane(dane):
         if k in dane: dane[k].sort(key=sort_key)
     return dane
 
+# --- FUNKCJA AUTOMATYCZNEGO PRZESUWANIA ODBIORÓW ---
+def obsluz_zalegle_odbiory(dane):
+    dzis = datetime.now()
+    dzis_str = dzis.strftime("%d.%m")
+    zmiana = False
+    
+    # Sprawdzamy Produkcję i Odbiory
+    for kat in ["w_realizacji", "odbiory"]:
+        for item in dane.get(kat, []):
+            if item.get("auto") == "Odbiór osobisty" and item.get("status") != "Gotowe":
+                termin_str = str(item.get("termin", "")).strip()
+                if termin_str:
+                    try:
+                        parts = termin_str.split('.')
+                        d, m = int(parts[0]), int(parts[1])
+                        y = int(parts[2]) if len(parts) > 2 else dzis.year
+                        data_item = datetime(y, m, d)
+                        
+                        # Jeśli data jest wczorajsza lub starsza
+                        if data_item.date() < dzis.date():
+                            item["termin"] = dzis_str
+                            zmiana = True
+                    except: pass
+    return dane, zmiana
+
 def wczytaj_dane():
     default_dane = {
         "w_realizacji": [], "zrealizowane": [], 
@@ -147,6 +172,12 @@ def wczytaj_dane():
             d = json.loads(val)
             for k, v in default_dane.items():
                 if k not in d: d[k] = v
+            
+            # URUCHOMIENIE AUTOMATYCZNEGO PRZESUWANIA
+            d, czy_byla_zmiana = obsluz_zalegle_odbiory(d)
+            if czy_byla_zmiana:
+                zapisz_dane(d)
+                
             return posortuj_dane(d)
     except: pass
     return default_dane
@@ -268,7 +299,7 @@ with st.sidebar:
     data_druk = st.text_input("Podaj datę (np. 31.03):", value=datetime.now().strftime("%d.%m"))
     st.download_button("📥 Pobierz Rozpiskę Dnia", data=generuj_rozpiske_zbiorcza(data_druk, dane["w_realizacji"], dane["odbiory"]), file_name=f"Plan_{data_druk}.html", mime="text/html")
 
-# --- 5. POWIADOMIENIA ---
+# --- 6. POWIADOMIENIA ---
 if st.session_state.prev_login and not st.session_state.notif_seen:
     try:
         p_dt = datetime.strptime(st.session_state.prev_login, "%d.%m %H:%M").replace(year=2026)
@@ -288,7 +319,7 @@ if st.session_state.prev_login and not st.session_state.notif_seen:
             st.markdown('</div>', unsafe_allow_html=True)
     except: pass
 
-# --- 6. TERMINARZ TYGODNIOWY ---
+# --- 7. TERMINARZ TYGODNIOWY ---
 st.markdown('<div class="section-header">Terminarz Tygodniowy</div>', unsafe_allow_html=True)
 if "wo" not in st.session_state: st.session_state.wo = 0
 cn1, _, cn3 = st.columns([1,4,1])
@@ -334,7 +365,7 @@ for i in range(7):
                 if dd == day.day and dm == day.month: st.markdown(f"<div class='cal-entry-task'>D: {d.get('tytul')}</div>", unsafe_allow_html=True)
             except: pass
 
-# --- 7. TABELE REALIZACJI (UJEDNOLICONE I NAPRAWIONE) ---
+# --- 8. TABELE REALIZACJI (UJEDNOLICONE I NAPRAWIONE) ---
 st.markdown('<div class="section-header">Listy Realizacji</div>', unsafe_allow_html=True)
 search = st.text_input("🔍 Szukaj we wszystkich wpisach...", "").lower()
 tabs = st.tabs(["🏭 Produkcja", "🔄 Odbiory", "🚚 Przyjęcia PZ", "📋 Dyspozycje"])
@@ -351,9 +382,7 @@ def renderuj_tabele_ujednolicona(lista_zrodlowa, klucz_nazwa, klucz_szczegoly, k
     hc[3].markdown(f'<div class="label-text">Akcja</div>', unsafe_allow_html=True)
     
     last_date = None
-    # Kluczowe: iterujemy po oryginalnej liście (lista_zrodlowa)
     for i, item in enumerate(lista_zrodlowa):
-        # FILTROWANIE
         ma_termin = bool(str(item.get('termin','')).strip())
         if typ_sekcji == "produkcja" and not ma_termin: continue
         if typ_sekcji == "plan" and ma_termin: continue
@@ -400,7 +429,6 @@ def renderuj_tabele_ujednolicona(lista_zrodlowa, klucz_nazwa, klucz_szczegoly, k
                     hist_key = {"prod":"zrealizowane", "odb":"odbiory_historia", "pz":"przyjecia_historia", "dysp":"dyspozycje_historia"}[klucz_id]
                     dane[hist_key].append(lista_zrodlowa.pop(i)); zapisz_dane(dane); st.rerun()
             
-            # NAPRAWIONE USUWANIE
             if c[4].button("X", key=f"del_{u_id}"):
                 lista_zrodlowa.pop(i)
                 zapisz_dane(dane)
@@ -427,7 +455,7 @@ with tabs[3]:
     with sub1: renderuj_tabele_ujednolicona(dane["dyspozycje"], "tytul", "opis", "dysp", "active")
     with sub2: st.dataframe(dane["dyspozycje_historia"][::-1], use_container_width=True)
 
-# --- 8. TABLICA OGŁOSZEŃ ---
+# --- 9. TABLICA OGŁOSZEŃ ---
 st.markdown("<br><hr style='border: 2px solid #343a40;'><br>", unsafe_allow_html=True)
 st.markdown('<div class="section-header">📌 Tablica Ogłoszeń</div>', unsafe_allow_html=True)
 if can_edit:
