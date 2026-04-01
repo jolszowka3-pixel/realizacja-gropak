@@ -218,8 +218,6 @@ def generuj_rozpiske_zbiorcza(data_cel, lista_zlecen, lista_odbiorow):
 # --- 4. SYSTEM LOGOWANIA ---
 if "user" not in st.session_state: st.session_state.user = None
 if "role" not in st.session_state: st.session_state.role = "wgląd"
-if "prev_login" not in st.session_state: st.session_state.prev_login = ""
-if "notif_seen" not in st.session_state: st.session_state.notif_seen = False
 
 if not st.session_state.user:
     st.markdown('<style>[data-testid="stSidebar"] {display: none;}</style>', unsafe_allow_html=True)
@@ -234,7 +232,6 @@ if not st.session_state.user:
                 if u in dane["uzytkownicy"] and dane["uzytkownicy"][u]["pass"] == p: 
                     st.session_state.user = u
                     st.session_state.role = dane["uzytkownicy"][u]["role"]
-                    st.session_state.prev_login = dane["uzytkownicy"][u].get("last_login", "")
                     dane["uzytkownicy"][u]["last_login"] = datetime.now().strftime("%d.%m %H:%M")
                     zapisz_dane(dane); st.rerun()
                 else: st.error("Błąd logowania")
@@ -293,27 +290,7 @@ with st.sidebar:
     data_druk = st.text_input("Podaj datę (np. 31.03):", value=datetime.now().strftime("%d.%m"))
     st.download_button("📥 Pobierz Rozpiskę Dnia", data=generuj_rozpiske_zbiorcza(data_druk, dane["w_realizacji"], dane["odbiory"]), file_name=f"Plan_{data_druk}.html", mime="text/html")
 
-# --- 6. POWIADOMIENIA ---
-if st.session_state.prev_login and not st.session_state.notif_seen:
-    try:
-        p_dt = datetime.strptime(st.session_state.prev_login, "%d.%m %H:%M").replace(year=2026)
-        nowe = []
-        for k, lbl in [("w_realizacji","📦 Prod"), ("odbiory","🔄 Odbiór"), ("przyjecia","🚚 PZ"), ("dyspozycje","📋 Dysp")]:
-            for item in dane[k]:
-                try:
-                    i_dt = datetime.strptime(item["data_p"], "%d.%m %H:%M").replace(year=2026)
-                    if i_dt > p_dt:
-                        nm = item.get("klient") or item.get("miejsce") or item.get("dostawca") or item.get("tytul")
-                        nowe.append(f"• <b>{lbl}</b>: {nm} (dodano {item['data_p']})")
-                except: pass
-        if nowe:
-            st.markdown(f'<div class="notification-container"><div class="notif-title">🔔 NOWOŚCI OD OSTATNIEJ WIZYTY:</div>', unsafe_allow_html=True)
-            for n in nowe[:6]: st.markdown(f'<div class="notif-item">{n}</div>', unsafe_allow_html=True)
-            if st.button("Zrozumiałem, ukryj"): st.session_state.notif_seen = True; st.rerun()
-            st.markdown('</div>', unsafe_allow_html=True)
-    except: pass
-
-# --- 7. TERMINARZ TYGODNIOWY ---
+# --- 6. TERMINARZ TYGODNIOWY ---
 st.markdown('<div class="section-header">Terminarz Tygodniowy</div>', unsafe_allow_html=True)
 if "wo" not in st.session_state: st.session_state.wo = 0
 cn1, _, cn3 = st.columns([1,4,1])
@@ -359,7 +336,7 @@ for i in range(7):
                 if dd == day.day and dm == day.month: st.markdown(f"<div class='cal-entry-task'>D: {d.get('tytul')}</div>", unsafe_allow_html=True)
             except: pass
 
-# --- 8. TABELE REALIZACJI (NAPRAWIONE) ---
+# --- 7. TABELE REALIZACJI ---
 st.markdown('<div class="section-header">Listy Realizacji</div>', unsafe_allow_html=True)
 search = st.text_input("🔍 Szukaj we wszystkich wpisach...", "").lower()
 tabs = st.tabs(["🏭 Produkcja", "🔄 Odbiory", "🚚 Przyjęcia PZ", "📋 Dyspozycje"])
@@ -392,10 +369,12 @@ def renderuj_tabele_ujednolicona(lista_zrodlowa, klucz_nazwa, klucz_szczegoly, k
         badge = '<span class="badge-status-ready">✅ GOTOWE</span>' if status=='Gotowe' else '<span class="badge-status-prod">⏳ W TOKU</span>'
         if klucz_id == "odb": badge = '<span class="badge-status-return">🔄 ODBIÓR</span>'
         
-        # DODANO TOOLTIP (title) przy nazwie klienta/podmiotu
-        szczegoly_val = str(item.get(klucz_szczegoly, "Brak opisu")).replace("'", "&apos;")
-        c[0].markdown(f"<span class='client-hover' title='{szczegoly_val}'>**{item.get(klucz_nazwa)}**</span><br>{badge}", unsafe_allow_html=True)
+        # BEZPIECZNE CZYSZCZENIE TEKSTU DLA TOOLTIPA (title)
+        # Zamieniamy cudzysłowy i inne znaki na kody HTML, żeby nie psuły atrybutu title
+        szczeg_raw = str(item.get(klucz_szczegoly, "Brak opisu"))
+        szczeg_safe = szczeg_raw.replace('"', "&quot;").replace("'", "&apos;").replace("\n", " ")
         
+        c[0].markdown(f"<span class='client-hover' title='{szczeg_safe}'>**{item.get(klucz_nazwa)}**</span><br>{badge}", unsafe_allow_html=True)
         c[1].write(item.get('termin', '---'))
         
         u_id = f"{klucz_id}_{i}_{item.get('data_p','')}".replace(':','').replace(' ','_').replace('.','_')
@@ -427,9 +406,7 @@ def renderuj_tabele_ujednolicona(lista_zrodlowa, klucz_nazwa, klucz_szczegoly, k
                     dane[hist_key].append(lista_zrodlowa.pop(i)); zapisz_dane(dane); st.rerun()
             
             if c[4].button("X", key=f"del_{u_id}"):
-                lista_zrodlowa.pop(i)
-                zapisz_dane(dane)
-                st.rerun()
+                lista_zrodlowa.pop(i); zapisz_dane(dane); st.rerun()
 
 with tabs[0]:
     sub1, sub2, sub3 = st.tabs(["Aktywne", "📂 Do zaplanowania", "Historia"])
@@ -452,7 +429,7 @@ with tabs[3]:
     with sub1: renderuj_tabele_ujednolicona(dane["dyspozycje"], "tytul", "opis", "dysp", "active")
     with sub2: st.dataframe(dane["dyspozycje_historia"][::-1], use_container_width=True)
 
-# --- 9. TABLICA OGŁOSZEŃ ---
+# --- 8. TABLICA OGŁOSZEŃ ---
 st.markdown("<br><hr style='border: 2px solid #343a40;'><br>", unsafe_allow_html=True)
 st.markdown('<div class="section-header">📌 Tablica Ogłoszeń</div>', unsafe_allow_html=True)
 if can_edit:
