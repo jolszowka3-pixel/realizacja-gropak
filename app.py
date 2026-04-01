@@ -52,17 +52,8 @@ button:has(div p:contains("Przywróć")), button:contains("Przywróć") {
 .notif-title { font-weight: 900; color: #856404; font-size: 16px; margin-bottom: 8px; }
 .notif-item { font-size: 13px; color: #856404; padding: 2px 0; border-bottom: 1px dashed #ffeeba; }
 
-/* POLA TEKSTOWE */
-.stTextInput input { min-height: 32px !important; height: 32px !important; font-size: 12px !important; border-radius: 6px !important; }
-div[data-testid="stPopover"] > button { min-height: 32px !important; height: 32px !important; border: 1px solid #ced4da !important; background: white !important; text-align: left !important; color: #495057 !important; }
-
 .main .block-container { padding-top: 2rem; }
 .section-header { background-color: #f8f9fa; padding: 12px 15px; border-radius: 6px; margin-bottom: 12px; margin-top: 25px; font-weight: 700; color: #212529; text-transform: uppercase; border-left: 5px solid #2b3035; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
-.sidebar-header { background: linear-gradient(90deg, #1e7e34, #28a745); color: white; padding: 12px; border-radius: 6px; text-align: center; font-weight: 700; font-size: 14px; margin-bottom: 15px; letter-spacing: 1px; }
-
-/* NOTATKA / TABLICA */
-.note-card { background-color: #fff9c4; border-left: 5px solid #fbc02d; padding: 15px; border-radius: 4px; margin-bottom: 10px; box-shadow: 2px 2px 5px rgba(0,0,0,0.05); }
-.note-meta { font-size: 10px; color: #7f8c8d; margin-top: 8px; border-top: 1px solid #f0e68c; padding-top: 4px; }
 
 /* KALENDARZ */
 [data-testid="stHorizontalBlock"]:has(> div:nth-child(7)):not(:has(> div:nth-child(8))) { gap: 0px !important; }
@@ -73,7 +64,7 @@ div[data-testid="stPopover"] > button { min-height: 32px !important; height: 32p
 .day-name { font-weight: 700; font-size: 12px; color: #495057; text-transform: uppercase; }
 .day-date { font-size: 11px; color: #868e96; }
 
-.cal-entry-out, .cal-entry-ready, .cal-entry-in, .cal-entry-task, .cal-entry-return { font-size: 10px; padding: 4px 6px; margin-bottom: 2px; border-radius: 3px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
+.cal-entry-out, .cal-entry-ready, .cal-entry-in, .cal-entry-task, .cal-entry-return { font-size: 10px; padding: 4px 6px; margin-bottom: 2px; border-radius: 3px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; cursor: help; }
 .cal-entry-out { background: #e7f5ff; color: #0056b3; border-left: 3px solid #0056b3; }
 .cal-entry-ready { background: #d4edda; color: #155724; border-left: 3px solid #28a745; }
 .cal-entry-return { background: #f3e5f5; color: #7b1fa2; border: 1px solid #7b1fa2; }
@@ -81,7 +72,6 @@ div[data-testid="stPopover"] > button { min-height: 32px !important; height: 32p
 .cal-entry-task { background: #fff4e6; color: #d9480f; border-left: 3px solid #d9480f; }
 
 /* TABELE REALIZACJI */
-.table-group-header { background-color: #e9ecef; color: #212529; padding: 6px 12px; font-weight: 700; font-size: 12px; border-radius: 4px; margin: 15px 0 8px 0; border-left: 4px solid #007bff; }
 .badge-status-prod { background-color: #ffc107; color: #212529; padding: 2px 5px; border-radius: 4px; font-size: 9px; font-weight: bold; margin-left: 5px; display: inline-block;}
 .badge-status-ready { background-color: #28a745; color: white; padding: 2px 5px; border-radius: 4px; font-size: 9px; font-weight: bold; margin-left: 5px; display: inline-block;}
 .badge-status-return { background-color: #7b1fa2; color: white; padding: 2px 5px; border-radius: 4px; font-size: 9px; font-weight: bold; margin-left: 5px; display: inline-block;}
@@ -90,8 +80,6 @@ div[data-testid="stPopover"] > button { min-height: 32px !important; height: 32p
 
 /* Tooltip dla nazwy klienta */
 .client-hover { cursor: help; border-bottom: 1px dotted #999; }
-
-div[data-testid="stHorizontalBlock"] { align-items: flex-start !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -109,9 +97,7 @@ def get_gsheet_client():
             "https://www.googleapis.com/auth/drive"
         ])
         return gspread.authorize(scoped_credentials)
-    except Exception as e:
-        st.error(f"Błąd autoryzacji: {e}")
-        return None
+    except: return None
 
 def posortuj_dane(dane):
     def sort_key(item):
@@ -125,7 +111,7 @@ def posortuj_dane(dane):
             if not termin: return (2, 9999, 99, 99, 99, 99, 99, pilne)
             parts = termin.split('.')
             d, m = int(parts[0]), int(parts[1])
-            y = int(parts[2]) if len(parts) > 2 else 2026
+            y = 2026
             return (0, y, m, d, t_score, k_score, status_score, pilne)
         except: return (1, 9999, 99, 99, 99, 99, 99, pilne)
     for k in ["w_realizacji", "przyjecia", "dyspozycje", "odbiory"]:
@@ -144,7 +130,7 @@ def obsluz_zalegle_odbiory(dane):
                     try:
                         parts = termin_str.split('.')
                         d, m = int(parts[0]), int(parts[1])
-                        y = int(parts[2]) if len(parts) > 2 else dzis.year
+                        y = 2026
                         data_item = datetime(y, m, d)
                         if data_item.date() < dzis.date():
                             item["termin"] = dzis_str
@@ -154,10 +140,8 @@ def obsluz_zalegle_odbiory(dane):
 
 def wczytaj_dane():
     default_dane = {
-        "w_realizacji": [], "zrealizowane": [], 
-        "przyjecia": [], "przyjecia_historia": [], 
-        "dyspozycje": [], "dyspozycje_historia": [], 
-        "odbiory": [], "odbiory_historia": [],
+        "w_realizacji": [], "zrealizowane": [], "przyjecia": [], "przyjecia_historia": [], 
+        "dyspozycje": [], "dyspozycje_historia": [], "odbiory": [], "odbiory_historia": [],
         "tablica": [], "uzytkownicy": {"admin": {"pass": "gropak2026", "role": "admin", "last_login": ""}}
     }
     client = get_gsheet_client()
@@ -232,7 +216,6 @@ if not st.session_state.user:
                 if u in dane["uzytkownicy"] and dane["uzytkownicy"][u]["pass"] == p: 
                     st.session_state.user = u
                     st.session_state.role = dane["uzytkownicy"][u]["role"]
-                    dane["uzytkownicy"][u]["last_login"] = datetime.now().strftime("%d.%m %H:%M")
                     zapisz_dane(dane); st.rerun()
                 else: st.error("Błąd logowania")
     st.stop()
@@ -251,7 +234,7 @@ with st.sidebar:
     st.divider()
     
     if is_admin:
-        with st.expander("👥 Zarządzanie użytkownikami"):
+        with st.expander("👥 Użytkownicy"):
             with st.form("add_u_f", clear_on_submit=True):
                 nu, np, nr = st.text_input("Login"), st.text_input("Hasło"), st.selectbox("Rola", ["edycja","wgląd","admin"])
                 if st.form_submit_button("Dodaj"):
@@ -290,7 +273,12 @@ with st.sidebar:
     data_druk = st.text_input("Podaj datę (np. 31.03):", value=datetime.now().strftime("%d.%m"))
     st.download_button("📥 Pobierz Rozpiskę Dnia", data=generuj_rozpiske_zbiorcza(data_druk, dane["w_realizacji"], dane["odbiory"]), file_name=f"Plan_{data_druk}.html", mime="text/html")
 
-# --- 6. TERMINARZ TYGODNIOWY ---
+# --- 6. POWIADOMIENIA ---
+if "notif_seen" not in st.session_state: st.session_state.notif_seen = False
+if not st.session_state.notif_seen:
+    st.info("System operacyjny gotowy.")
+
+# --- 7. TERMINARZ TYGODNIOWY (Z TOOLTIPAMI) ---
 st.markdown('<div class="section-header">Terminarz Tygodniowy</div>', unsafe_allow_html=True)
 if "wo" not in st.session_state: st.session_state.wo = 0
 cn1, _, cn3 = st.columns([1,4,1])
@@ -319,24 +307,41 @@ for i in range(7):
                     if k not in gr: gr[k] = {"p":[], "o":[]}
                     gr[k]["o"].append(o)
             except: pass
+        
         for (tr, kr), cnt in gr.items():
             all_r = all(it.get('status')=='Gotowe' for it in cnt["p"])
             cl = "cal-entry-ready" if (all_r and cnt["p"]) else "cal-entry-out"
             lbl = f"{tr}/K{kr}" if tr in ["Auto 1","Auto 2"] else tr
-            st.markdown(f"<div class='{cl}'>{lbl} ({len(cnt['p'])+len(cnt['o'])})</div>", unsafe_allow_html=True)
+            
+            # BUDOWANIE TOOLTIPA DLA KURSU
+            tt_lines = ["KLIENCI W TYM KURSIE:"]
+            for it in cnt["p"]: tt_lines.append(f"• {it.get('klient')} ({str(it.get('szczegoly',''))[:40]}...)")
+            if cnt["o"]:
+                tt_lines.append("")
+                tt_lines.append("ODBIORY OSOBISTE / INNE:")
+                for it in cnt["o"]: tt_lines.append(f"• {it.get('miejsce')} ({str(it.get('towar',''))[:40]}...)")
+            
+            tooltip_html = "&#10;".join(tt_lines).replace("'", "&apos;").replace('"', "&quot;")
+            
+            st.markdown(f"<div class='{cl}' title='{tooltip_html}'>{lbl} ({len(cnt['p'])+len(cnt['o'])})</div>", unsafe_allow_html=True)
             if cnt["o"]: st.markdown(f"<div class='cal-entry-return' style='height:3px; margin-top:-4px;'></div>", unsafe_allow_html=True)
+            
         for p in dane["przyjecia"]:
             try:
                 parts = p.get('termin','').split('.'); pd, pm = int(parts[0]), int(parts[1])
-                if pd == day.day and pm == day.month: st.markdown(f"<div class='cal-entry-in'>P: {p.get('dostawca')}</div>", unsafe_allow_html=True)
+                if pd == day.day and pm == day.month:
+                    tip_pz = f"DOSTAWCA: {p.get('dostawca')}&#10;TOWAR: {p.get('towar')}"
+                    st.markdown(f"<div class='cal-entry-in' title='{tip_pz}'>P: {p.get('dostawca')}</div>", unsafe_allow_html=True)
             except: pass
         for d in dane["dyspozycje"]:
             try:
                 parts = d.get('termin','').split('.'); dd, dm = int(parts[0]), int(parts[1])
-                if dd == day.day and dm == day.month: st.markdown(f"<div class='cal-entry-task'>D: {d.get('tytul')}</div>", unsafe_allow_html=True)
+                if dd == day.day and dm == day.month:
+                    tip_d = f"TYTUŁ: {d.get('tytul')}&#10;OPIS: {d.get('opis')}"
+                    st.markdown(f"<div class='cal-entry-task' title='{tip_d}'>D: {d.get('tytul')}</div>", unsafe_allow_html=True)
             except: pass
 
-# --- 7. TABELE REALIZACJI ---
+# --- 8. TABELE REALIZACJI (UJEDNOLICONE) ---
 st.markdown('<div class="section-header">Listy Realizacji</div>', unsafe_allow_html=True)
 search = st.text_input("🔍 Szukaj we wszystkich wpisach...", "").lower()
 tabs = st.tabs(["🏭 Produkcja", "🔄 Odbiory", "🚚 Przyjęcia PZ", "📋 Dyspozycje"])
@@ -345,7 +350,6 @@ def renderuj_tabele_ujednolicona(lista_zrodlowa, klucz_nazwa, klucz_szczegoly, k
     if not lista_zrodlowa: 
         st.info("Brak aktywnych wpisów.")
         return
-    
     hc = st.columns([2.0, 1.2, 5.0, 1.2, 0.6])
     hc[0].markdown('<div class="label-text">Podmiot / Tytuł</div>', unsafe_allow_html=True)
     hc[1].markdown('<div class="label-text">Termin</div>', unsafe_allow_html=True)
@@ -369,16 +373,11 @@ def renderuj_tabele_ujednolicona(lista_zrodlowa, klucz_nazwa, klucz_szczegoly, k
         badge = '<span class="badge-status-ready">✅ GOTOWE</span>' if status=='Gotowe' else '<span class="badge-status-prod">⏳ W TOKU</span>'
         if klucz_id == "odb": badge = '<span class="badge-status-return">🔄 ODBIÓR</span>'
         
-        # BEZPIECZNE CZYSZCZENIE TEKSTU DLA TOOLTIPA (title)
-        # Zamieniamy cudzysłowy i inne znaki na kody HTML, żeby nie psuły atrybutu title
-        szczeg_raw = str(item.get(klucz_szczegoly, "Brak opisu"))
-        szczeg_safe = szczeg_raw.replace('"', "&quot;").replace("'", "&apos;").replace("\n", " ")
-        
+        szczeg_safe = str(item.get(klucz_szczegoly, "Brak opisu")).replace('"', "&quot;").replace("'", "&apos;").replace("\n", " ")
         c[0].markdown(f"<span class='client-hover' title='{szczeg_safe}'>**{item.get(klucz_nazwa)}**</span><br>{badge}", unsafe_allow_html=True)
         c[1].write(item.get('termin', '---'))
         
         u_id = f"{klucz_id}_{i}_{item.get('data_p','')}".replace(':','').replace(' ','_').replace('.','_')
-        
         if is_readonly:
             c[2].markdown(f"<div class='readonly-text'>{item.get(klucz_szczegoly,'-')}</div>", unsafe_allow_html=True)
         else:
@@ -404,41 +403,35 @@ def renderuj_tabele_ujednolicona(lista_zrodlowa, klucz_nazwa, klucz_szczegoly, k
                 if c[3].button("WYŚLIJ", key=f"send_{u_id}"):
                     hist_key = {"prod":"zrealizowane", "odb":"odbiory_historia", "pz":"przyjecia_historia", "dysp":"dyspozycje_historia"}[klucz_id]
                     dane[hist_key].append(lista_zrodlowa.pop(i)); zapisz_dane(dane); st.rerun()
-            
             if c[4].button("X", key=f"del_{u_id}"):
                 lista_zrodlowa.pop(i); zapisz_dane(dane); st.rerun()
 
 with tabs[0]:
-    sub1, sub2, sub3 = st.tabs(["Aktywne", "📂 Do zaplanowania", "Historia"])
-    with sub1: renderuj_tabele_ujednolicona(dane["w_realizacji"], "klient", "szczegoly", "prod", "produkcja")
-    with sub2: renderuj_tabele_ujednolicona(dane["w_realizacji"], "klient", "szczegoly", "prod", "plan")
-    with sub3: st.dataframe(dane["zrealizowane"][::-1], use_container_width=True)
-
+    s1, s2, s3 = st.tabs(["Aktywne", "📂 Do zaplanowania", "Historia"])
+    with s1: renderuj_tabele_ujednolicona(dane["w_realizacji"], "klient", "szczegoly", "prod", "produkcja")
+    with s2: renderuj_tabele_ujednolicona(dane["w_realizacji"], "klient", "szczegoly", "prod", "plan")
+    with s3: st.dataframe(dane["zrealizowane"][::-1], use_container_width=True)
 with tabs[1]:
-    sub1, sub2 = st.tabs(["Aktywne", "Historia"])
-    with sub1: renderuj_tabele_ujednolicona(dane["odbiory"], "miejsce", "towar", "odb", "active")
-    with sub2: st.dataframe(dane["odbiory_historia"][::-1], use_container_width=True)
-
+    s1, s2 = st.tabs(["Aktywne", "Historia"])
+    with s1: renderuj_tabele_ujednolicona(dane["odbiory"], "miejsce", "towar", "odb", "active")
+    with s2: st.dataframe(dane["odbiory_historia"][::-1], use_container_width=True)
 with tabs[2]:
-    sub1, sub2 = st.tabs(["Aktywne", "Historia"])
-    with sub1: renderuj_tabele_ujednolicona(dane["przyjecia"], "dostawca", "towar", "pz", "active")
-    with sub2: st.dataframe(dane["przyjecia_historia"][::-1], use_container_width=True)
-
+    s1, s2 = st.tabs(["Aktywne", "Historia"])
+    with s1: renderuj_tabele_ujednolicona(dane["przyjecia"], "dostawca", "towar", "pz", "active")
+    with s2: st.dataframe(dane["przyjecia_historia"][::-1], use_container_width=True)
 with tabs[3]:
-    sub1, sub2 = st.tabs(["Aktywne", "Historia"])
-    with sub1: renderuj_tabele_ujednolicona(dane["dyspozycje"], "tytul", "opis", "dysp", "active")
-    with sub2: st.dataframe(dane["dyspozycje_historia"][::-1], use_container_width=True)
+    s1, s2 = st.tabs(["Aktywne", "Historia"])
+    with s1: renderuj_tabele_ujednolicona(dane["dyspozycje"], "tytul", "opis", "dysp", "active")
+    with s2: st.dataframe(dane["dyspozycje_historia"][::-1], use_container_width=True)
 
-# --- 8. TABLICA OGŁOSZEŃ ---
+# --- 9. TABLICA OGŁOSZEŃ ---
 st.markdown("<br><hr style='border: 2px solid #343a40;'><br>", unsafe_allow_html=True)
-st.markdown('<div class="section-header">📌 Tablica Ogłoszeń</div>', unsafe_allow_html=True)
 if can_edit:
     with st.form("bottom_note", clear_on_submit=True):
         nowa_tresc = st.text_area("Dodaj ogłoszenie:")
         if st.form_submit_button("➕ Opublikuj"):
             if nowa_tresc: dane["tablica"].append({"tresc": nowa_tresc, "data": datetime.now().strftime("%d.%m %H:%M"), "autor": st.session_state.user}); zapisz_dane(dane); st.rerun()
-if not dane["tablica"]: st.info("Brak ogłoszeń.")
-else:
+if dane["tablica"]:
     nc = st.columns(3)
     for i, note in enumerate(reversed(dane["tablica"])):
         ridx = len(dane["tablica"])-1-i
