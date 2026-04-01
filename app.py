@@ -40,7 +40,7 @@ button:has(div p:contains("Przywróć")), button:contains("Przywróć") {
     border: none !important; color: white !important; background-color: #17a2b8 !important;
 }
 
-/* --- PASEK POWIADOMIEŃ --- */
+/* PASEK POWIADOMIEŃ */
 .notification-container {
     background-color: #fff3cd;
     border: 2px solid #ffeeba;
@@ -60,11 +60,11 @@ div[data-testid="stPopover"] > button { min-height: 32px !important; height: 32p
 .section-header { background-color: #f8f9fa; padding: 12px 15px; border-radius: 6px; margin-bottom: 12px; margin-top: 25px; font-weight: 700; color: #212529; text-transform: uppercase; border-left: 5px solid #2b3035; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
 .sidebar-header { background: linear-gradient(90deg, #1e7e34, #28a745); color: white; padding: 12px; border-radius: 6px; text-align: center; font-weight: 700; font-size: 14px; margin-bottom: 15px; letter-spacing: 1px; }
 
-/* --- NOTATKA / TABLICA --- */
+/* NOTATKA / TABLICA */
 .note-card { background-color: #fff9c4; border-left: 5px solid #fbc02d; padding: 15px; border-radius: 4px; margin-bottom: 10px; box-shadow: 2px 2px 5px rgba(0,0,0,0.05); }
 .note-meta { font-size: 10px; color: #7f8c8d; margin-top: 8px; border-top: 1px solid #f0e68c; padding-top: 4px; }
 
-/* --- KALENDARZ --- */
+/* KALENDARZ */
 [data-testid="stHorizontalBlock"]:has(> div:nth-child(7)):not(:has(> div:nth-child(8))) { gap: 0px !important; }
 [data-testid="stHorizontalBlock"]:has(> div:nth-child(7)):not(:has(> div:nth-child(8))) > div {
     flex: 0 0 calc(100% / 7) !important; min-width: calc(100% / 7) !important; max-width: calc(100% / 7) !important; padding: 0 3px !important;
@@ -80,13 +80,16 @@ div[data-testid="stPopover"] > button { min-height: 32px !important; height: 32p
 .cal-entry-in { background: #f3f9f1; color: #28a745; border-left: 3px solid #28a745; }
 .cal-entry-task { background: #fff4e6; color: #d9480f; border-left: 3px solid #d9480f; }
 
-/* --- TABELE REALIZACJI --- */
+/* TABELE REALIZACJI */
 .table-group-header { background-color: #e9ecef; color: #212529; padding: 6px 12px; font-weight: 700; font-size: 12px; border-radius: 4px; margin: 15px 0 8px 0; border-left: 4px solid #007bff; }
 .badge-status-prod { background-color: #ffc107; color: #212529; padding: 2px 5px; border-radius: 4px; font-size: 9px; font-weight: bold; margin-left: 5px; display: inline-block;}
 .badge-status-ready { background-color: #28a745; color: white; padding: 2px 5px; border-radius: 4px; font-size: 9px; font-weight: bold; margin-left: 5px; display: inline-block;}
 .badge-status-return { background-color: #7b1fa2; color: white; padding: 2px 5px; border-radius: 4px; font-size: 9px; font-weight: bold; margin-left: 5px; display: inline-block;}
 .label-text { font-size: 11px; color: #6c757d; font-weight: 700; text-transform: uppercase; border-bottom: 1px solid #dee2e6; padding-bottom: 4px;}
 .readonly-text { font-size: 13px; white-space: pre-wrap; color: #495057; line-height: 1.4; padding: 5px; background: #fdfdfd; border-radius: 4px; border: 1px solid #eee; }
+
+/* Tooltip dla nazwy klienta */
+.client-hover { cursor: help; border-bottom: 1px dotted #999; }
 
 div[data-testid="stHorizontalBlock"] { align-items: flex-start !important; }
 </style>
@@ -129,13 +132,10 @@ def posortuj_dane(dane):
         if k in dane: dane[k].sort(key=sort_key)
     return dane
 
-# --- FUNKCJA AUTOMATYCZNEGO PRZESUWANIA ODBIORÓW ---
 def obsluz_zalegle_odbiory(dane):
     dzis = datetime.now()
     dzis_str = dzis.strftime("%d.%m")
     zmiana = False
-    
-    # Sprawdzamy Produkcję i Odbiory
     for kat in ["w_realizacji", "odbiory"]:
         for item in dane.get(kat, []):
             if item.get("auto") == "Odbiór osobisty" and item.get("status") != "Gotowe":
@@ -146,8 +146,6 @@ def obsluz_zalegle_odbiory(dane):
                         d, m = int(parts[0]), int(parts[1])
                         y = int(parts[2]) if len(parts) > 2 else dzis.year
                         data_item = datetime(y, m, d)
-                        
-                        # Jeśli data jest wczorajsza lub starsza
                         if data_item.date() < dzis.date():
                             item["termin"] = dzis_str
                             zmiana = True
@@ -172,12 +170,8 @@ def wczytaj_dane():
             d = json.loads(val)
             for k, v in default_dane.items():
                 if k not in d: d[k] = v
-            
-            # URUCHOMIENIE AUTOMATYCZNEGO PRZESUWANIA
             d, czy_byla_zmiana = obsluz_zalegle_odbiory(d)
-            if czy_byla_zmiana:
-                zapisz_dane(d)
-                
+            if czy_byla_zmiana: zapisz_dane(d)
             return posortuj_dane(d)
     except: pass
     return default_dane
@@ -365,7 +359,7 @@ for i in range(7):
                 if dd == day.day and dm == day.month: st.markdown(f"<div class='cal-entry-task'>D: {d.get('tytul')}</div>", unsafe_allow_html=True)
             except: pass
 
-# --- 8. TABELE REALIZACJI (UJEDNOLICONE I NAPRAWIONE) ---
+# --- 8. TABELE REALIZACJI (NAPRAWIONE) ---
 st.markdown('<div class="section-header">Listy Realizacji</div>', unsafe_allow_html=True)
 search = st.text_input("🔍 Szukaj we wszystkich wpisach...", "").lower()
 tabs = st.tabs(["🏭 Produkcja", "🔄 Odbiory", "🚚 Przyjęcia PZ", "📋 Dyspozycje"])
@@ -398,7 +392,10 @@ def renderuj_tabele_ujednolicona(lista_zrodlowa, klucz_nazwa, klucz_szczegoly, k
         badge = '<span class="badge-status-ready">✅ GOTOWE</span>' if status=='Gotowe' else '<span class="badge-status-prod">⏳ W TOKU</span>'
         if klucz_id == "odb": badge = '<span class="badge-status-return">🔄 ODBIÓR</span>'
         
-        c[0].markdown(f"**{item.get(klucz_nazwa)}**<br>{badge}", unsafe_allow_html=True)
+        # DODANO TOOLTIP (title) przy nazwie klienta/podmiotu
+        szczegoly_val = str(item.get(klucz_szczegoly, "Brak opisu")).replace("'", "&apos;")
+        c[0].markdown(f"<span class='client-hover' title='{szczegoly_val}'>**{item.get(klucz_nazwa)}**</span><br>{badge}", unsafe_allow_html=True)
+        
         c[1].write(item.get('termin', '---'))
         
         u_id = f"{klucz_id}_{i}_{item.get('data_p','')}".replace(':','').replace(' ','_').replace('.','_')
