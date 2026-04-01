@@ -10,109 +10,86 @@ st.set_page_config(page_title="GROPAK ERP", layout="wide")
 
 st.markdown("""
 <style>
-/* Import czcionki Inter dla nowoczesnego wyglądu */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
-
-html, body, [class*="css"] {
-    font-family: 'Inter', sans-serif;
+/* Wspólne ustawienia przycisków */
+.stButton>button, .stFormSubmitButton>button, .stDownloadButton>button { 
+    width: 100%; border-radius: 6px; min-height: 32px !important; height: 32px !important; 
+    font-size: 12px; font-weight: 600; transition: all 0.2s ease-in-out;
+    border: 1px solid #ced4da; padding: 0 10px; line-height: 1; box-shadow: 0 1px 2px rgba(0,0,0,0.05);
 }
 
-/* Główne tło i kontenery */
-.main {
-    background-color: #f9fafb;
+/* PRZYCISKI KOLOROWE */
+button:has(div p:contains("WYŚLIJ")), button:contains("WYŚLIJ"), button:has(div p:contains("OK")), button:contains("OK") {
+    border: none !important; color: white !important; background-color: #28a745 !important;
+}
+button:has(div p:contains("ZROBIONE")), button:contains("ZROBIONE"), button:has(div p:contains("GOTOWE")), button:contains("GOTOWE") {
+    border: none !important; color: white !important; background-color: #28a745 !important;
+}
+button:has(div p:contains("X")), button:contains("X") {
+    border: none !important; color: white !important; background-color: #dc3545 !important; padding: 0 !important;
+}
+button:has(div p:contains("Zapisz")), button:contains("Zapisz") {
+    border: none !important; color: white !important; background-color: #007bff !important;
+}
+button:has(div p:contains("RESETUJ")), button:contains("RESETUJ") {
+    border: none !important; color: white !important; background-color: #dc3545 !important; font-weight: 900 !important;
+}
+button:has(div p:contains("Zaloguj się")), button:contains("Zaloguj się") {
+    border: none !important; color: white !important; background-color: #1e7e34 !important; height: 40px !important; font-size: 14px; margin-top: 10px;
+}
+button:has(div p:contains("Przywróć")), button:contains("Przywróć") {
+    border: none !important; color: white !important; background-color: #17a2b8 !important;
 }
 
-.stApp {
-    color: #111827;
+/* --- PASEK POWIADOMIEŃ --- */
+.notification-container {
+    background-color: #fff3cd;
+    border: 2px solid #ffeeba;
+    border-left: 10px solid #ffc107;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 25px;
 }
+.notif-title { font-weight: 900; color: #856404; font-size: 16px; margin-bottom: 8px; }
+.notif-item { font-size: 13px; color: #856404; padding: 2px 0; border-bottom: 1px dashed #ffeeba; }
 
-/* Profesjonalne przyciski */
-.stButton>button, .stFormSubmitButton>button, .stDownloadButton>button {
-    background-color: #ffffff !important;
-    color: #374151 !important;
-    border: 1px solid #d1d5db !important;
-    border-radius: 4px !important;
-    font-size: 13px !important;
-    font-weight: 500 !important;
-    height: 36px !important;
-    transition: all 0.2s;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.05) !important;
-}
+/* POLA TEKSTOWE */
+.stTextInput input { min-height: 32px !important; height: 32px !important; font-size: 12px !important; border-radius: 6px !important; }
+div[data-testid="stPopover"] > button { min-height: 32px !important; height: 32px !important; border: 1px solid #ced4da !important; background: white !important; text-align: left !important; color: #495057 !important; }
 
-.stButton>button:hover {
-    border-color: #3b82f6 !important;
-    color: #3b82f6 !important;
-    background-color: #f0f9ff !important;
-}
+.main .block-container { padding-top: 2rem; }
+.section-header { background-color: #f8f9fa; padding: 12px 15px; border-radius: 6px; margin-bottom: 12px; margin-top: 25px; font-weight: 700; color: #212529; text-transform: uppercase; border-left: 5px solid #2b3035; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+.sidebar-header { background: linear-gradient(90deg, #1e7e34, #28a745); color: white; padding: 12px; border-radius: 6px; text-align: center; font-weight: 700; font-size: 14px; margin-bottom: 15px; letter-spacing: 1px; }
+.sidebar-print-header { background: #343a40; color: white; padding: 10px; border-radius: 6px; text-align: center; font-weight: 700; font-size: 13px; margin-top: 20px; margin-bottom: 10px; }
 
-/* Przyciski akcji (Zapisz/Wyślij) - subtelny niebieski */
-button:contains("Zapisz"), button:contains("WYŚLIJ"), button:contains("ZROBIONE"), button:contains("Zaloguj") {
-    background-color: #2563eb !important;
-    color: white !important;
-    border: none !important;
-}
+/* --- NOTATKA / TABLICA --- */
+.note-card { background-color: #fff9c4; border-left: 5px solid #fbc02d; padding: 15px; border-radius: 4px; margin-bottom: 10px; box-shadow: 2px 2px 5px rgba(0,0,0,0.05); }
+.note-meta { font-size: 10px; color: #7f8c8d; margin-top: 8px; border-top: 1px solid #f0e68c; padding-top: 4px; }
 
-button:contains("Zapisz"):hover, button:contains("WYŚLIJ"):hover {
-    background-color: #1d4ed8 !important;
+/* --- KALENDARZ --- */
+[data-testid="stHorizontalBlock"]:has(> div:nth-child(7)):not(:has(> div:nth-child(8))) { gap: 0px !important; }
+[data-testid="stHorizontalBlock"]:has(> div:nth-child(7)):not(:has(> div:nth-child(8))) > div {
+    flex: 0 0 calc(100% / 7) !important; min-width: calc(100% / 7) !important; max-width: calc(100% / 7) !important; padding: 0 3px !important;
 }
+.day-header { text-align: center; border-bottom: 2px solid #343a40; margin-bottom: 8px; padding-bottom: 4px; }
+.day-name { font-weight: 700; font-size: 12px; color: #495057; text-transform: uppercase; }
+.day-date { font-size: 11px; color: #868e96; }
 
-/* Sekcje i Nagłówki */
-.section-header {
-    font-size: 18px;
-    font-weight: 700;
-    color: #111827;
-    padding-bottom: 8px;
-    margin-bottom: 20px;
-    border-bottom: 2px solid #e5e7eb;
-}
+.cal-entry-out, .cal-entry-ready, .cal-entry-in, .cal-entry-task, .cal-entry-return { font-size: 10px; padding: 4px 6px; margin-bottom: 2px; border-radius: 3px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
+.cal-entry-out { background: #e7f5ff; color: #0056b3; border-left: 3px solid #0056b3; }
+.cal-entry-ready { background: #d4edda; color: #155724; border-left: 3px solid #28a745; }
+.cal-entry-return { background: #f3e5f5; color: #7b1fa2; border: 1px solid #7b1fa2; }
+.cal-entry-in { background: #f3f9f1; color: #28a745; border-left: 3px solid #28a745; }
+.cal-entry-task { background: #fff4e6; color: #d9480f; border-left: 3px solid #d9480f; }
 
-/* Tabele i wiersze */
-.table-group-header {
-    background-color: #f3f4f6;
-    color: #4b5563;
-    padding: 8px 12px;
-    font-weight: 600;
-    font-size: 12px;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    border-radius: 4px;
-    margin: 20px 0 10px 0;
-}
+/* --- TABELE REALIZACJI --- */
+.table-group-header { background-color: #e9ecef; color: #212529; padding: 6px 12px; font-weight: 700; font-size: 12px; border-radius: 4px; margin: 15px 0 8px 0; border-left: 4px solid #007bff; }
+.badge-status-prod { background-color: #ffc107; color: #212529; padding: 2px 5px; border-radius: 4px; font-size: 9px; font-weight: bold; margin-left: 5px; display: inline-block;}
+.badge-status-ready { background-color: #28a745; color: white; padding: 2px 5px; border-radius: 4px; font-size: 9px; font-weight: bold; margin-left: 5px; display: inline-block;}
+.badge-status-return { background-color: #7b1fa2; color: white; padding: 2px 5px; border-radius: 4px; font-size: 9px; font-weight: bold; margin-left: 5px; display: inline-block;}
+.label-text { font-size: 11px; color: #6c757d; font-weight: 700; text-transform: uppercase; border-bottom: 1px solid #dee2e6; padding-bottom: 4px;}
+.readonly-text { font-size: 13px; white-space: pre-wrap; color: #495057; line-height: 1.4; padding: 5px; background: #fdfdfd; border-radius: 4px; border: 1px solid #eee; }
 
-/* Statusy bez emotikon */
-.badge-status {
-    padding: 4px 10px;
-    border-radius: 9999px;
-    font-size: 11px;
-    font-weight: 600;
-    text-transform: uppercase;
-}
-.status-work { background-color: #fef3c7; color: #92400e; }
-.status-ready { background-color: #d1fae5; color: #065f46; }
-.status-neutral { background-color: #e5e7eb; color: #374151; }
-
-/* Kalendarz - czysta siatka */
-.day-col {
-    border: 1px solid #e5e7eb;
-    background: white;
-    padding: 10px;
-    min-height: 200px;
-}
-.day-header {
-    text-align: center;
-    background: #f9fafb;
-    padding: 5px;
-    border-bottom: 1px solid #e5e7eb;
-    font-weight: 600;
-}
-
-/* Sidebar */
-[data-testid="stSidebar"] {
-    background-color: #111827 !important;
-}
-[data-testid="stSidebar"] .stMarkdown, [data-testid="stSidebar"] p {
-    color: #f9fafb !important;
-}
+div[data-testid="stHorizontalBlock"] { align-items: flex-start !important; }
 </style>
 """, unsafe_allow_html=True)
 
