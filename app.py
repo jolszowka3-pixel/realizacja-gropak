@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 import gspread
 from google.oauth2 import service_account
 
-# --- 1. KONFIGURACJA I STYLIZACJA (BEZ ZMIAN) ---
+# --- 1. KONFIGURACJA I STYLIZACJA ---
 st.set_page_config(page_title="GROPAK ERP", layout="wide")
 
 st.markdown("""
@@ -55,9 +55,6 @@ button:has(div p:contains("Przywróć")), button:contains("Przywróć") {
 .main .block-container { padding-top: 2rem; }
 .section-header { background-color: #f8f9fa; padding: 12px 15px; border-radius: 6px; margin-bottom: 12px; margin-top: 25px; font-weight: 700; color: #212529; text-transform: uppercase; border-left: 5px solid #2b3035; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
 
-/* SEPARATOR DNI W TABELACH */
-.table-group-header { background-color: #e9ecef; color: #212529; padding: 6px 12px; font-weight: 700; font-size: 12px; border-radius: 4px; margin: 15px 0 8px 0; border-left: 4px solid #007bff; }
-
 /* KALENDARZ */
 [data-testid="stHorizontalBlock"]:has(> div:nth-child(7)):not(:has(> div:nth-child(8))) { gap: 0px !important; }
 [data-testid="stHorizontalBlock"]:has(> div:nth-child(7)):not(:has(> div:nth-child(8))) > div {
@@ -75,6 +72,7 @@ button:has(div p:contains("Przywróć")), button:contains("Przywróć") {
 .cal-entry-task { background: #fff4e6; color: #d9480f; border-left: 3px solid #d9480f; }
 
 /* TABELE REALIZACJI */
+.table-group-header { background-color: #e9ecef; color: #212529; padding: 6px 12px; font-weight: 700; font-size: 12px; border-radius: 4px; margin: 15px 0 8px 0; border-left: 4px solid #007bff; }
 .badge-status-prod { background-color: #ffc107; color: #212529; padding: 2px 5px; border-radius: 4px; font-size: 9px; font-weight: bold; margin-left: 5px; display: inline-block;}
 .badge-status-ready { background-color: #28a745; color: white; padding: 2px 5px; border-radius: 4px; font-size: 9px; font-weight: bold; margin-left: 5px; display: inline-block;}
 .badge-status-return { background-color: #7b1fa2; color: white; padding: 2px 5px; border-radius: 4px; font-size: 9px; font-weight: bold; margin-left: 5px; display: inline-block;}
@@ -83,12 +81,10 @@ button:has(div p:contains("Przywróć")), button:contains("Przywróć") {
 
 /* Tooltip dla nazwy klienta */
 .client-hover { cursor: help; border-bottom: 1px dotted #999; }
-
-div[data-testid="stHorizontalBlock"] { align-items: flex-start !important; }
 </style>
 """, unsafe_allow_html=True)
 
-# --- 2. LOGIKA BAZY DANYCH (BEZ ZMIAN) ---
+# --- 2. LOGIKA BAZY DANYCH ---
 GSHEET_NAME = "GROPAK_ERP_DB"
 OPCJE_TRANSPORTU = ["Brak", "Auto 1", "Auto 2", "Transport zewnętrzny", "Odbiór osobisty", "Kurier"]
 
@@ -115,9 +111,7 @@ def posortuj_dane(dane):
             termin = str(item.get('termin', '')).strip()
             if not termin: return (2, 9999, 99, 99, 99, 99, 99, pilne)
             parts = termin.split('.')
-            d, m = int(parts[0]), int(parts[1])
-            y = 2026
-            return (0, y, m, d, t_score, k_score, status_score, pilne)
+            return (0, 2026, int(parts[1]), int(parts[0]), t_score, k_score, status_score, pilne)
         except: return (1, 9999, 99, 99, 99, 99, 99, pilne)
     for k in ["w_realizacji", "przyjecia", "dyspozycje", "odbiory"]:
         if k in dane: dane[k].sort(key=sort_key)
@@ -134,9 +128,7 @@ def obsluz_zalegle_odbiory(dane):
                 if termin_str:
                     try:
                         parts = termin_str.split('.')
-                        d, m = int(parts[0]), int(parts[1])
-                        y = 2026
-                        data_item = datetime(y, m, d)
+                        data_item = datetime(2026, int(parts[1]), int(parts[0]))
                         if data_item.date() < dzis.date():
                             item["termin"] = dzis_str
                             zmiana = True
@@ -144,11 +136,7 @@ def obsluz_zalegle_odbiory(dane):
     return dane, zmiana
 
 def wczytaj_dane():
-    default_dane = {
-        "w_realizacji": [], "zrealizowane": [], "przyjecia": [], "przyjecia_historia": [], 
-        "dyspozycje": [], "dyspozycje_historia": [], "odbiory": [], "odbiory_historia": [],
-        "tablica": [], "uzytkownicy": {"admin": {"pass": "gropak2026", "role": "admin", "last_login": ""}}
-    }
+    default_dane = {"w_realizacji": [], "zrealizowane": [], "przyjecia": [], "przyjecia_historia": [], "dyspozycje": [], "dyspozycje_historia": [], "odbiory": [], "odbiory_historia": [], "tablica": [], "uzytkownicy": {"admin": {"pass": "gropak2026", "role": "admin", "last_login": ""}}}
     client = get_gsheet_client()
     if not client: return default_dane
     try:
@@ -170,15 +158,14 @@ def zapisz_dane(dane_do_zapisu):
     if not client: return
     try:
         dane_do_zapisu = posortuj_dane(dane_do_zapisu)
-        sh = client.open(GSHEET_NAME)
-        ws = sh.get_worksheet(0)
+        sh = client.open(GSHEET_NAME); ws = sh.get_worksheet(0)
         ws.update_acell('A1', json.dumps(dane_do_zapisu))
     except Exception as e:
         st.error(f"Błąd zapisu: {e}")
 
 dane = wczytaj_dane()
 
-# --- 3. FUNKCJE POMOCNICZE (BEZ ZMIAN) ---
+# --- 3. FUNKCJE POMOCNICZE ---
 def generuj_html_do_druku(z):
     auto_val = z.get('auto', 'Brak'); k_val = z.get('kurs', 1); transport_str = f"{auto_val} / Kurs nr {k_val}" if auto_val in ["Auto 1", "Auto 2"] else auto_val
     return f"""<!DOCTYPE html><html lang="pl"><head><meta charset="UTF-8"><style>body{{font-family:sans-serif;padding:30px;}} .card{{border:5px solid black;padding:30px;}} h1{{text-align:center;border-bottom:3px solid black;}} .row{{display:flex;justify-content:space-between;margin-top:20px;font-size:20px;}} .box{{border:1px solid #666;padding:15px;margin-top:20px;min-height:300px;font-size:20px;white-space:pre-wrap;line-height:1.4;}}</style></head><body onload="window.print()"><div class="card"><h1>Karta Zlecenia: {z.get('klient')}</h1><div class="row"><div><b>Termin:</b> {z.get('termin')}</div><div><b>Transport:</b> {transport_str}</div></div><p><b>PRODUKTY / SZCZEGÓŁY:</b></p><div class="box">{z.get('szczegoly')}</div><div style="margin-top:50px;text-align:right;">Podpis: __________________________</div></div></body></html>"""
@@ -204,7 +191,7 @@ def generuj_rozpiske_zbiorcza(data_cel, lista_zlecen, lista_odbiorow):
             html += "</table>"
     html += "</body></html>"; return html
 
-# --- 4. SYSTEM LOGOWANIA (BEZ ZMIAN) ---
+# --- 4. SYSTEM LOGOWANIA ---
 if "user" not in st.session_state: st.session_state.user = None
 if "role" not in st.session_state: st.session_state.role = "wgląd"
 
@@ -229,16 +216,14 @@ is_readonly = st.session_state.role == "wgląd"
 can_edit = st.session_state.role in ["admin", "edycja"]
 is_admin = st.session_state.role == "admin"
 
-# --- 5. PANEL BOCZNY (DODANO PRZEŁĄCZNIK WIDOKU) ---
+# --- 5. PANEL BOCZNY ---
 with st.sidebar:
     st.markdown("### PANEL STEROWANIA")
-    # NOWY PRZEŁĄCZNIK MOBILNY
     tryb_mobilny = st.toggle("📱 Tryb Mobilny", value=False)
     st.divider()
     st.write(f"Zalogowany: **{st.session_state.user}**")
     if st.button("🚪 Wyloguj"): st.session_state.user = None; st.rerun()
     st.divider()
-    
     if is_admin:
         with st.expander("👥 Użytkownicy"):
             with st.form("add_u_f", clear_on_submit=True):
@@ -279,7 +264,7 @@ with st.sidebar:
     data_druk = st.text_input("Podaj datę (np. 31.03):", value=datetime.now().strftime("%d.%m"))
     st.download_button("📥 Pobierz Rozpiskę Dnia", data=generuj_rozpiske_zbiorcza(data_druk, dane["w_realizacji"], dane["odbiory"]), file_name=f"Plan_{data_druk}.html", mime="text/html")
 
-# --- 6. TERMINARZ TYGODNIOWY (ADAPTACJA MOBILNA) ---
+# --- 6. TERMINARZ TYGODNIOWY ---
 st.markdown('<div class="section-header">Terminarz Tygodniowy</div>', unsafe_allow_html=True)
 if "wo" not in st.session_state: st.session_state.wo = 0
 cn1, _, cn3 = st.columns([1,4,1])
@@ -293,67 +278,37 @@ if not tryb_mobilny:
         day = start + timedelta(days=i); d_str = day.strftime('%d.%m')
         with cols[i]:
             st.markdown(f"<div class='day-header'><div class='day-name'>{['Pon','Wt','Śr','Czw','Pt','Sob','Nd'][i]}</div><div class='day-date'>{d_str}</div></div>", unsafe_allow_html=True)
-            gr = {}
-            for z in dane["w_realizacji"]:
-                try:
-                    parts = z.get('termin','').split('.'); zd, zm = int(parts[0]), int(parts[1])
-                    if zd == day.day and zm == day.month:
-                        k = (z.get('auto','Brak'), z.get('kurs',1)); 
-                        if k not in gr: gr[k] = {"p":[], "o":[]}
-                        gr[k]["p"].append(z)
-                except: pass
-            for o in dane["odbiory"]:
-                try:
-                    parts = o.get('termin','').split('.'); zd, zm = int(parts[0]), int(parts[1])
-                    if zd == day.day and zm == day.month:
-                        k = (o.get('auto','Brak'), o.get('kurs',1)); 
-                        if k not in gr: gr[k] = {"p":[], "o":[]}
-                        gr[k]["o"].append(o)
-                except: pass
-            for (tr, kr), cnt in gr.items():
-                all_r = all(it.get('status')=='Gotowe' for it in cnt["p"])
-                cl = "cal-entry-ready" if (all_r and cnt["p"]) else "cal-entry-out"
-                lbl = f"{tr}/K{kr}" if tr in ["Auto 1","Auto 2"] else tr
-                tt_lines = ["KLIENCI W TYM KURSIE:"]
-                for it in cnt["p"]: tt_lines.append(f"• {it.get('klient')} ({str(it.get('szczegoly',''))[:40]}...)")
-                if cnt["o"]:
-                    tt_lines.append(""); tt_lines.append("ODBIORY OSOBISTE / INNE:")
-                    for it in cnt["o"]: tt_lines.append(f"• {it.get('miejsce')} ({str(it.get('towar',''))[:40]}...)")
-                tooltip_html = "&#10;".join(tt_lines).replace("'", "&apos;").replace('"', "&quot;")
-                st.markdown(f"<div class='{cl}' title='{tooltip_html}'>{lbl} ({len(cnt['p'])+len(cnt['o'])})</div>", unsafe_allow_html=True)
-                if cnt["o"]: st.markdown(f"<div class='cal-entry-return' style='height:3px; margin-top:-4px;'></div>", unsafe_allow_html=True)
+            
+            # POPRAWIONA LOGIKA WYŚWIETLANIA W KALENDARZU (POKAZUJE KLIENTA)
+            z_dnia = [z for z in dane["w_realizacji"] if z.get('termin') == d_str]
+            o_dnia = [o for o in dane["odbiory"] if o.get('termin') == d_str]
+            
+            for z in z_dnia:
+                cl = "cal-entry-ready" if z.get('status') == 'Gotowe' else "cal-entry-out"
+                szczeg_safe = str(z.get('szczegoly', '')).replace('"', "&quot;").replace("'", "&apos;")
+                st.markdown(f"<div class='{cl}' title='{szczeg_safe}'>{z.get('klient')} ({z.get('auto')})</div>", unsafe_allow_html=True)
+            
+            for o in o_dnia:
+                towar_safe = str(o.get('towar', '')).replace('"', "&quot;").replace("'", "&apos;")
+                st.markdown(f"<div class='cal-entry-return' title='{towar_safe}'>Odb: {o.get('miejsce')}</div>", unsafe_allow_html=True)
+                
             for p in dane["przyjecia"]:
-                try:
-                    parts = p.get('termin','').split('.'); pd, pm = int(parts[0]), int(parts[1])
-                    if pd == day.day and pm == day.month:
-                        tip_pz = f"DOSTAWCA: {p.get('dostawca')}&#10;TOWAR: {p.get('towar')}"
-                        st.markdown(f"<div class='cal-entry-in' title='{tip_pz}'>P: {p.get('dostawca')}</div>", unsafe_allow_html=True)
-                except: pass
+                if p.get('termin') == d_str:
+                    st.markdown(f"<div class='cal-entry-in' title='{p.get('towar')}'>P: {p.get('dostawca')}</div>", unsafe_allow_html=True)
             for d in dane["dyspozycje"]:
-                try:
-                    parts = d.get('termin','').split('.'); dd, dm = int(parts[0]), int(parts[1])
-                    if dd == day.day and dm == day.month:
-                        tip_d = f"TYTUŁ: {d.get('tytul')}&#10;OPIS: {d.get('opis')}"
-                        st.markdown(f"<div class='cal-entry-task' title='{tip_d}'>D: {d.get('tytul')}</div>", unsafe_allow_html=True)
-                except: pass
+                if d.get('termin') == d_str:
+                    st.markdown(f"<div class='cal-entry-task' title='{d.get('opis')}'>D: {d.get('tytul')}</div>", unsafe_allow_html=True)
 else:
-    # WIDOK MOBILNY - LISTA ZADAŃ NA DNI
     for i in range(7):
         day = start + timedelta(days=i); d_str = day.strftime('%d.%m')
-        # Zbierz zadania na ten dzień
         z_dnia = [z for z in dane["w_realizacji"] if z.get('termin') == d_str]
         o_dnia = [o for o in dane["odbiory"] if o.get('termin') == d_str]
-        p_dnia = [p for p in dane["przyjecia"] if p.get('termin') == d_str]
-        d_dnia = [d for d in dane["dyspozycje"] if d.get('termin') == d_str]
-        
-        if z_dnia or o_dnia or p_dnia or d_dnia:
-            with st.expander(f"📅 {['Pon','Wt','Śr','Czw','Pt','Sob','Nd'][i]} ({d_str}) - {len(z_dnia)+len(o_dnia)+len(p_dnia)+len(d_dnia)} zadań"):
-                for z in z_dnia: st.write(f"📦 **{z['klient']}** - {z['auto']} (Kurs {z['kurs']}) - Status: {z['status']}")
-                for o in o_dnia: st.write(f"🔄 **Odbiór: {o['miejsce']}** - {o['towar']}")
-                for p in p_dnia: st.write(f"🚚 **Dostawa: {p['dostawca']}** - {p['towar']}")
-                for d in d_dnia: st.write(f"📋 **Dyspozycja: {d['tytul']}**")
+        if z_dnia or o_dnia:
+            with st.expander(f"📅 {['Pon','Wt','Śr','Czw','Pt','Sob','Nd'][i]} ({d_str})"):
+                for z in z_dnia: st.write(f"📦 **{z['klient']}** - {z['auto']} (K{z['kurs']})")
+                for o in o_dnia: st.write(f"🔄 **Odbiór: {o['miejsce']}**")
 
-# --- 7. TABELE REALIZACJI (ADAPTACJA MOBILNA NAGŁÓWKÓW) ---
+# --- 7. TABELE REALIZACJI ---
 st.markdown('<div class="section-header">Listy Realizacji</div>', unsafe_allow_html=True)
 search = st.text_input("🔍 Szukaj we wszystkich wpisach...", "").lower()
 tabs = st.tabs(["🏭 Produkcja", "🔄 Odbiory", "🚚 Przyjęcia PZ", "📋 Dyspozycje"])
@@ -362,10 +317,8 @@ def renderuj_tabele_ujednolicona(lista_zrodlowa, klucz_nazwa, klucz_szczegoly, k
     if not lista_zrodlowa: 
         st.info("Brak aktywnych wpisów.")
         return
-    
-    # Nagłówki komputerowe
+    hc = st.columns([2.0, 1.2, 5.0, 1.2, 0.6]) if not tryb_mobilny else st.columns([3, 2])
     if not tryb_mobilny:
-        hc = st.columns([2.0, 1.2, 5.0, 1.2, 0.6])
         hc[0].markdown('<div class="label-text">Podmiot / Tytuł</div>', unsafe_allow_html=True)
         hc[1].markdown('<div class="label-text">Termin</div>', unsafe_allow_html=True)
         hc[2].markdown(f'<div class="label-text">{"Szczegóły" if is_readonly else "Zarządzanie"}</div>', unsafe_allow_html=True)
@@ -386,13 +339,12 @@ def renderuj_tabele_ujednolicona(lista_zrodlowa, klucz_nazwa, klucz_szczegoly, k
         status = item.get('status','W toku')
         badge = '<span class="badge-status-ready">✅ GOTOWE</span>' if status=='Gotowe' else '<span class="badge-status-prod">⏳ W TOKU</span>'
         if klucz_id == "odb": badge = '<span class="badge-status-return">🔄 ODBIÓR</span>'
+        
         szczeg_safe = str(item.get(klucz_szczegoly, "Brak opisu")).replace('"', "&quot;").replace("'", "&apos;").replace("\n", " ")
         u_id = f"{klucz_id}_{i}_{item.get('data_p','')}".replace(':','').replace(' ','_').replace('.','_')
 
         st.markdown("<div style='padding:10px 0; border-bottom:1px solid #eee;'>", unsafe_allow_html=True)
-        
         if not tryb_mobilny:
-            # WIDOK KOMPUTEROWY (ORYGINAŁ)
             c = st.columns([2.0, 1.2, 5.0, 1.2, 0.6])
             c[0].markdown(f"<span class='client-hover' title='{szczeg_safe}'>**{item.get(klucz_nazwa)}**</span><br>{badge}", unsafe_allow_html=True)
             c[1].write(item.get('termin', '---'))
@@ -418,41 +370,38 @@ def renderuj_tabele_ujednolicona(lista_zrodlowa, klucz_nazwa, klucz_szczegoly, k
                         dane[hist_key].append(lista_zrodlowa.pop(i)); zapisz_dane(dane); st.rerun()
                 if c[4].button("X", key=f"del_{u_id}"): lista_zrodlowa.pop(i); zapisz_dane(dane); st.rerun()
         else:
-            # WIDOK MOBILNY (KOMPAKTOWY)
             c1, c2 = st.columns([3.5, 1.5])
             c1.markdown(f"**{item.get(klucz_nazwa)}**<br>{badge}", unsafe_allow_html=True)
             with c2.popover("Akcje"):
                 st.write(f"Termin: {item.get('termin')}")
                 st.write(f"Treść: {item.get(klucz_szczegoly)}")
                 if not is_readonly:
-                    if status != "Gotowe":
-                        if st.button("ZROBIONE", key=f"mok_{u_id}"): item['status'] = "Gotowe"; zapisz_dane(dane); st.rerun()
-                    else:
-                        if st.button("WYŚLIJ", key=f"msend_{u_id}"):
-                            hist_key = {"prod":"zrealizowane", "odb":"odbiory_historia", "pz":"przyjecia_historia", "dysp":"dyspozycje_historia"}[klucz_id]
-                            dane[hist_key].append(lista_zrodlowa.pop(i)); zapisz_dane(dane); st.rerun()
+                    if status != "Gotowe" and st.button("ZROBIONE", key=f"mok_{u_id}"): item['status']="Gotowe"; zapisz_dane(dane); st.rerun()
+                    if status == "Gotowe" and st.button("WYŚLIJ", key=f"msnd_{u_id}"):
+                        hist_key = {"prod":"zrealizowane", "odb":"odbiory_historia", "pz":"przyjecia_historia", "dysp":"dyspozycje_historia"}[klucz_id]
+                        dane[hist_key].append(lista_zrodlowa.pop(i)); zapisz_dane(dane); st.rerun()
                     if st.button("USUŃ", key=f"mdel_{u_id}"): lista_zrodlowa.pop(i); zapisz_dane(dane); st.rerun()
         st.markdown("</div>", unsafe_allow_html=True)
 
 with tabs[0]:
-    sub1, sub2, sub3 = st.tabs(["Aktywne", "📂 Do zaplanowania", "Historia"])
-    with sub1: renderuj_tabele_ujednolicona(dane["w_realizacji"], "klient", "szczegoly", "prod", "produkcja")
-    with sub2: renderuj_tabele_ujednolicona(dane["w_realizacji"], "klient", "szczegoly", "prod", "plan")
-    with sub3: st.dataframe(dane["zrealizowane"][::-1], use_container_width=True)
+    s1, s2, s3 = st.tabs(["Aktywne", "📂 Do zaplanowania", "Historia"])
+    with s1: renderuj_tabele_ujednolicona(dane["w_realizacji"], "klient", "szczegoly", "prod", "produkcja")
+    with s2: renderuj_tabele_ujednolicona(dane["w_realizacji"], "klient", "szczegoly", "prod", "plan")
+    with s3: st.dataframe(dane["zrealizowane"][::-1], use_container_width=True)
 with tabs[1]:
-    sub1, sub2 = st.tabs(["Aktywne", "Historia"])
-    with sub1: renderuj_tabele_ujednolicona(dane["odbiory"], "miejsce", "towar", "odb", "active")
-    with sub2: st.dataframe(dane["odbiory_historia"][::-1], use_container_width=True)
+    s1, s2 = st.tabs(["Aktywne", "Historia"])
+    with s1: renderuj_tabele_ujednolicona(dane["odbiory"], "miejsce", "towar", "odb", "active")
+    with s2: st.dataframe(dane["odbiory_historia"][::-1], use_container_width=True)
 with tabs[2]:
-    sub1, sub2 = st.tabs(["Aktywne", "Historia"])
-    with sub1: renderuj_tabele_ujednolicona(dane["przyjecia"], "dostawca", "towar", "pz", "active")
-    with sub2: st.dataframe(dane["przyjecia_historia"][::-1], use_container_width=True)
+    s1, s2 = st.tabs(["Aktywne", "Historia"])
+    with s1: renderuj_tabele_ujednolicona(dane["przyjecia"], "dostawca", "towar", "pz", "active")
+    with s2: st.dataframe(dane["przyjecia_historia"][::-1], use_container_width=True)
 with tabs[3]:
-    sub1, sub2 = st.tabs(["Aktywne", "Historia"])
-    with sub1: renderuj_tabele_ujednolicona(dane["dyspozycje"], "tytul", "opis", "dysp", "active")
-    with sub2: st.dataframe(dane["dyspozycje_historia"][::-1], use_container_width=True)
+    s1, s2 = st.tabs(["Aktywne", "Historia"])
+    with s1: renderuj_tabele_ujednolicona(dane["dyspozycje"], "tytul", "opis", "dysp", "active")
+    with s2: st.dataframe(dane["dyspozycje_historia"][::-1], use_container_width=True)
 
-# --- 8. TABLICA OGŁOSZEŃ (BEZ ZMIAN) ---
+# --- 8. TABLICA OGŁOSZEŃ ---
 st.markdown("<br><hr style='border: 2px solid #343a40;'><br>", unsafe_allow_html=True)
 if can_edit:
     with st.form("bottom_note", clear_on_submit=True):
