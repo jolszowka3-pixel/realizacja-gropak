@@ -54,8 +54,9 @@ button:has(div p:contains("Przywróć")), button:contains("Przywróć") {
 
 .main .block-container { padding-top: 2rem; }
 .section-header { background-color: #f8f9fa; padding: 12px 15px; border-radius: 6px; margin-bottom: 12px; margin-top: 25px; font-weight: 700; color: #212529; text-transform: uppercase; border-left: 5px solid #2b3035; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+.sidebar-header { background: linear-gradient(90deg, #1e7e34, #28a745); color: white; padding: 12px; border-radius: 6px; text-align: center; font-weight: 700; font-size: 14px; margin-bottom: 15px; letter-spacing: 1px; }
 
-/* --- STYL ŻÓŁTEJ KARTKI (POST-IT) --- */
+/* STYL ŻÓŁTEJ KARTKI (POST-IT) */
 .note-card { 
     background-color: #ffff88; 
     padding: 20px; 
@@ -114,10 +115,7 @@ def get_gsheet_client():
     try:
         creds_dict = st.secrets["gcp_service_account"]
         credentials = service_account.Credentials.from_service_account_info(creds_dict)
-        scoped_credentials = credentials.with_scopes([
-            "https://www.googleapis.com/auth/spreadsheets",
-            "https://www.googleapis.com/auth/drive"
-        ])
+        scoped_credentials = credentials.with_scopes(["https://www.googleapis.com/auth/spreadsheets","https://www.googleapis.com/auth/drive"])
         return gspread.authorize(scoped_credentials)
     except: return None
 
@@ -126,7 +124,7 @@ def posortuj_dane(dane):
         pilne = 0 if item.get('pilne') else 1 
         t_val = str(item.get('auto', 'Brak'))
         t_score = OPCJE_TRANSPORTU.index(t_val) if t_val in OPCJE_TRANSPORTU else 99
-        k_score = item.get('kurs', 1)
+        k_score = int(item.get('kurs', 1))
         status_score = 1 if item.get('status') == 'Gotowe' else 0 
         try:
             termin = str(item.get('termin', '')).strip()
@@ -149,9 +147,7 @@ def obsluz_zalegle_odbiory(dane):
                 if termin_str:
                     try:
                         parts = termin_str.split('.')
-                        d, m = int(parts[0]), int(parts[1])
-                        y = 2026
-                        data_item = datetime(y, m, d)
+                        data_item = datetime(2026, int(parts[1]), int(parts[0]))
                         if data_item.date() < dzis.date():
                             item["termin"] = dzis_str
                             zmiana = True
@@ -176,13 +172,11 @@ def wczytaj_dane():
 
 def zapisz_dane(dane_do_zapisu):
     client = get_gsheet_client()
-    if not client: return
-    try:
-        dane_do_zapisu = posortuj_dane(dane_do_zapisu)
-        sh = client.open(GSHEET_NAME); ws = sh.get_worksheet(0)
-        ws.update_acell('A1', json.dumps(dane_do_zapisu))
-    except Exception as e:
-        st.error(f"Błąd zapisu: {e}")
+    if client:
+        try:
+            sh = client.open(GSHEET_NAME); ws = sh.get_worksheet(0)
+            ws.update_acell('A1', json.dumps(posortuj_dane(dane_do_zapisu)))
+        except: pass
 
 dane = wczytaj_dane()
 
@@ -227,9 +221,7 @@ if not st.session_state.user:
             u = st.text_input("👤 Login"); p = st.text_input("🔒 Hasło", type="password")
             if st.form_submit_button("Zaloguj się do systemu"):
                 if u in dane["uzytkownicy"] and dane["uzytkownicy"][u]["pass"] == p: 
-                    st.session_state.user = u
-                    st.session_state.role = dane["uzytkownicy"][u]["role"]
-                    zapisz_dane(dane); st.rerun()
+                    st.session_state.user = u; st.session_state.role = dane["uzytkownicy"][u]["role"]; st.rerun()
                 else: st.error("Błąd logowania")
     st.stop()
 
@@ -252,7 +244,8 @@ with st.sidebar:
                 if st.form_submit_button("Dodaj"):
                     if nu: dane["uzytkownicy"][nu] = {"pass": np, "role": nr, "last_login": ""}; zapisz_dane(dane); st.rerun()
             for usr, info in dane["uzytkownicy"].items():
-                c1, c2, c3 = st.columns([2,1.2,0.8]); c1.write(f"**{usr}**")
+                c1, c2, c3 = st.columns([2,1.2,0.8])
+                c1.write(f"**{usr}**")
                 with c2.popover("Edytuj"):
                     ep = st.text_input("Hasło", info["pass"], key=f"up_{usr}")
                     er = st.selectbox("Rola", ["edycja","wgląd","admin"], ["edycja","wgląd","admin"].index(info["role"]), key=f"ur_{usr}")
@@ -269,9 +262,8 @@ with st.sidebar:
                 key_map = {"Produkcja": "w_realizacji", "Odbiór (Powrót)": "odbiory", "Dostawa (PZ)": "przyjecia", "Dyspozycja": "dyspozycje"}
                 item = {"klient": kl, "miejsce": kl, "dostawca": kl, "tytul": kl, "termin": tm, "szczegoly": sz, "towar": sz, "opis": sz, "auto": au, "kurs": int(kr), "pilne": pi, "status": "W produkcji", "data_p": datetime.now().strftime("%d.%m %H:%M"), "autor": st.session_state.user}
                 dane[key_map[typ]].append(item); zapisz_dane(dane); st.rerun()
-    
     st.divider()
-    data_druk = st.text_input("Podaj datę (np. 31.03):", value=datetime.now().strftime("%d.%m"))
+    data_druk = st.text_input("Podaj datę do druku (np. 31.03):", value=datetime.now().strftime("%d.%m"))
     st.download_button("📥 Pobierz Rozpiskę Dnia", data=generuj_rozpiske_zbiorcza(data_druk, dane["w_realizacji"], dane["odbiory"]), file_name=f"Plan_{data_druk}.html", mime="text/html")
 
 # --- 6. TERMINARZ TYGODNIOWY ---
@@ -321,10 +313,10 @@ else:
             with st.expander(f"📅 {['Pon','Wt','Śr','Czw','Pt','Sob','Nd'][i]} ({d_str})"):
                 for t in tasks: st.write(f"📦 **{t.get('klient') or t.get('miejsce')}** - {t.get('auto')} (K{t.get('kurs')})")
 
-# --- 7. TABELE REALIZACJI ---
+# --- 7. TABELE REALIZACJI I TABLICA OGŁOSZEŃ ---
 st.markdown('<div class="section-header">Listy Realizacji</div>', unsafe_allow_html=True)
 search = st.text_input("🔍 Szukaj we wszystkich wpisach...", "").lower()
-tabs = st.tabs(["🏭 Produkcja", "🔄 Odbiory", "🚚 Przyjęcia PZ", "📋 Dyspozycje"])
+tabs = st.tabs(["🏭 Produkcja", "🔄 Odbiory", "🚚 Przyjęcia PZ", "📋 Dyspozycje", "📌 Tablica Ogłoszeń"])
 
 def renderuj_tabele_ujednolicona(lista_zrodlowa, klucz_nazwa, klucz_szczegoly, klucz_id, typ_sekcji):
     if not lista_zrodlowa: 
@@ -395,18 +387,22 @@ with tabs[3]:
     with s1: renderuj_tabele_ujednolicona(dane["dyspozycje"], "tytul", "opis", "dysp", "active")
     with s2: st.dataframe(dane["dyspozycje_historia"][::-1], use_container_width=True)
 
-# --- 9. TABLICA OGŁOSZEŃ ---
-st.markdown("<br><hr style='border: 2px solid #343a40;'><br>", unsafe_allow_html=True)
-if can_edit:
-    with st.form("bottom_note", clear_on_submit=True):
-        nowa_tresc = st.text_area("Dodaj ogłoszenie:")
-        if st.form_submit_button("➕ Opublikuj"):
-            if nowa_tresc: dane["tablica"].append({"tresc": nowa_tresc, "data": datetime.now().strftime("%d.%m %H:%M"), "autor": st.session_state.user}); zapisz_dane(dane); st.rerun()
-if dane["tablica"]:
-    nc = st.columns(3)
-    for i, note in enumerate(reversed(dane["tablica"])):
-        ridx = len(dane["tablica"])-1-i
-        with nc[i % 3]:
-            st.markdown(f"<div class='note-card'>{note['tresc']}<div class='note-meta'>{note['data']} | {note['autor']}</div></div>", unsafe_allow_html=True)
-            if can_edit and st.button("Usuń", key=f"dn_{ridx}"):
-                dane["tablica"].pop(ridx); zapisz_dane(dane); st.rerun()
+# --- NOWA ZAKŁADKA: TABLICA OGŁOSZEŃ ---
+with tabs[4]:
+    st.markdown('<div class="section-header">📌 Tablica Ogłoszeń</div>', unsafe_allow_html=True)
+    if can_edit:
+        with st.form("bottom_note", clear_on_submit=True):
+            nowa_tresc = st.text_area("Dodaj ogłoszenie:")
+            if st.form_submit_button("➕ Opublikuj"):
+                if nowa_tresc: dane["tablica"].append({"tresc": nowa_tresc, "data": datetime.now().strftime("%d.%m %H:%M"), "autor": st.session_state.user}); zapisz_dane(dane); st.rerun()
+    
+    if not dane["tablica"]:
+        st.info("Brak aktywnych ogłoszeń.")
+    else:
+        nc = st.columns(3)
+        for i, note in enumerate(reversed(dane["tablica"])):
+            ridx = len(dane["tablica"])-1-i
+            with nc[i % 3]:
+                st.markdown(f"<div class='note-card'>{note['tresc']}<div class='note-meta'>{note['data']} | {note['autor']}</div></div>", unsafe_allow_html=True)
+                if can_edit and st.button("Usuń", key=f"dn_{ridx}"):
+                    dane["tablica"].pop(ridx); zapisz_dane(dane); st.rerun()
