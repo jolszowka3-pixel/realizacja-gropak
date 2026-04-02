@@ -42,12 +42,8 @@ button:has(div p:contains("Przywróć")), button:contains("Przywróć") {
 
 /* PASEK POWIADOMIEŃ */
 .notification-container {
-    background-color: #fff3cd;
-    border: 2px solid #ffeeba;
-    border-left: 10px solid #ffc107;
-    padding: 15px;
-    border-radius: 8px;
-    margin-bottom: 25px;
+    background-color: #fff3cd; border: 2px solid #ffeeba; border-left: 10px solid #ffc107;
+    padding: 15px; border-radius: 8px; margin-bottom: 25px;
 }
 .notif-title { font-weight: 900; color: #856404; font-size: 16px; margin-bottom: 8px; }
 .notif-item { font-size: 13px; color: #856404; padding: 2px 0; border-bottom: 1px dashed #ffeeba; }
@@ -74,21 +70,15 @@ button:has(div p:contains("Przywróć")), button:contains("Przywróć") {
 .cal-entry-in { background: #f3f9f1; color: #28a745; border-left: 3px solid #28a745; }
 .cal-entry-task { background: #fff4e6; color: #d9480f; border-left: 3px solid #d9480f; }
 
-/* TABELE REALIZACJI */
-.badge-status-prod { background-color: #ffc107; color: #212529; padding: 2px 5px; border-radius: 4px; font-size: 9px; font-weight: bold; margin-left: 5px; display: inline-block;}
-.badge-status-ready { background-color: #28a745; color: white; padding: 2px 5px; border-radius: 4px; font-size: 9px; font-weight: bold; margin-left: 5px; display: inline-block;}
-.badge-status-return { background-color: #7b1fa2; color: white; padding: 2px 5px; border-radius: 4px; font-size: 9px; font-weight: bold; margin-left: 5px; display: inline-block;}
 .label-text { font-size: 11px; color: #6c757d; font-weight: 700; text-transform: uppercase; border-bottom: 1px solid #dee2e6; padding-bottom: 4px;}
 .readonly-text { font-size: 13px; white-space: pre-wrap; color: #495057; line-height: 1.4; padding: 5px; background: #fdfdfd; border-radius: 4px; border: 1px solid #eee; }
-
-/* Tooltip dla nazwy klienta */
 .client-hover { cursor: help; border-bottom: 1px dotted #999; }
 
 div[data-testid="stHorizontalBlock"] { align-items: flex-start !important; }
 </style>
 """, unsafe_allow_html=True)
 
-# --- 2. LOGIKA BAZY DANYCH (GOOGLE SHEETS) ---
+# --- 2. LOGIKA BAZY DANYCH ---
 GSHEET_NAME = "GROPAK_ERP_DB"
 OPCJE_TRANSPORTU = ["Brak", "Auto 1", "Auto 2", "Transport zewnętrzny", "Odbiór osobisty", "Kurier"]
 
@@ -109,15 +99,13 @@ def posortuj_dane(dane):
         pilne = 0 if item.get('pilne') else 1 
         t_val = str(item.get('auto', 'Brak'))
         t_score = OPCJE_TRANSPORTU.index(t_val) if t_val in OPCJE_TRANSPORTU else 99
-        k_score = item.get('kurs', 1)
+        k_score = int(item.get('kurs', 1))
         status_score = 1 if item.get('status') == 'Gotowe' else 0 
         try:
             termin = str(item.get('termin', '')).strip()
             if not termin: return (2, 9999, 99, 99, 99, 99, 99, pilne)
             parts = termin.split('.')
-            d, m = int(parts[0]), int(parts[1])
-            y = 2026
-            return (0, y, m, d, t_score, k_score, status_score, pilne)
+            return (0, 2026, int(parts[1]), int(parts[0]), t_score, k_score, status_score, pilne)
         except: return (1, 9999, 99, 99, 99, 99, 99, pilne)
     for k in ["w_realizacji", "przyjecia", "dyspozycje", "odbiory"]:
         if k in dane: dane[k].sort(key=sort_key)
@@ -134,9 +122,7 @@ def obsluz_zalegle_odbiory(dane):
                 if termin_str:
                     try:
                         parts = termin_str.split('.')
-                        d, m = int(parts[0]), int(parts[1])
-                        y = 2026
-                        data_item = datetime(y, m, d)
+                        data_item = datetime(2026, int(parts[1]), int(parts[0]))
                         if data_item.date() < dzis.date():
                             item["termin"] = dzis_str
                             zmiana = True
@@ -144,17 +130,11 @@ def obsluz_zalegle_odbiory(dane):
     return dane, zmiana
 
 def wczytaj_dane():
-    default_dane = {
-        "w_realizacji": [], "zrealizowane": [], "przyjecia": [], "przyjecia_historia": [], 
-        "dyspozycje": [], "dyspozycje_historia": [], "odbiory": [], "odbiory_historia": [],
-        "tablica": [], "uzytkownicy": {"admin": {"pass": "gropak2026", "role": "admin", "last_login": ""}}
-    }
+    default_dane = {"w_realizacji": [], "zrealizowane": [], "przyjecia": [], "przyjecia_historia": [], "dyspozycje": [], "dyspozycje_historia": [], "odbiory": [], "odbiory_historia": [], "tablica": [], "uzytkownicy": {"admin": {"pass": "gropak2026", "role": "admin", "last_login": ""}}}
     client = get_gsheet_client()
     if not client: return default_dane
     try:
-        sh = client.open(GSHEET_NAME)
-        ws = sh.get_worksheet(0)
-        val = ws.acell('A1').value
+        sh = client.open(GSHEET_NAME); ws = sh.get_worksheet(0); val = ws.acell('A1').value
         if val:
             d = json.loads(val)
             for k, v in default_dane.items():
@@ -167,14 +147,11 @@ def wczytaj_dane():
 
 def zapisz_dane(dane_do_zapisu):
     client = get_gsheet_client()
-    if not client: return
-    try:
-        dane_do_zapisu = posortuj_dane(dane_do_zapisu)
-        sh = client.open(GSHEET_NAME)
-        ws = sh.get_worksheet(0)
-        ws.update_acell('A1', json.dumps(dane_do_zapisu))
-    except Exception as e:
-        st.error(f"Błąd zapisu: {e}")
+    if client:
+        try:
+            sh = client.open(GSHEET_NAME); ws = sh.get_worksheet(0)
+            ws.update_acell('A1', json.dumps(posortuj_dane(dane_do_zapisu)))
+        except: pass
 
 dane = wczytaj_dane()
 
@@ -188,11 +165,11 @@ def generuj_rozpiske_zbiorcza(data_cel, lista_zlecen, lista_odbiorow):
     z_dnia = [z for z in lista_zlecen if z.get('termin') == data_cel]; o_dnia = [o for o in lista_odbiorow if o.get('termin') == data_cel]
     grupy = {}
     for z in z_dnia:
-        k = (z.get('auto', 'Brak'), z.get('kurs', 1))
+        k = (str(z.get('auto', 'Brak')), str(z.get('kurs', 1)))
         if k not in grupy: grupy[k] = {"prod": [], "odb": []}
         grupy[k]["prod"].append(z)
     for o in o_dnia:
-        k = (o.get('auto', 'Brak'), o.get('kurs', 1))
+        k = (str(o.get('auto', 'Brak')), str(o.get('kurs', 1)))
         if k not in grupy: grupy[k] = {"prod": [], "odb": []}
         grupy[k]["odb"].append(o)
     if not grupy: html += f"<h2 style='text-align:center;'>Brak zadań na dzień {data_cel}.</h2>"
@@ -219,9 +196,7 @@ if not st.session_state.user:
             u = st.text_input("👤 Login"); p = st.text_input("🔒 Hasło", type="password")
             if st.form_submit_button("Zaloguj się do systemu"):
                 if u in dane["uzytkownicy"] and dane["uzytkownicy"][u]["pass"] == p: 
-                    st.session_state.user = u
-                    st.session_state.role = dane["uzytkownicy"][u]["role"]
-                    zapisz_dane(dane); st.rerun()
+                    st.session_state.user = u; st.session_state.role = dane["uzytkownicy"][u]["role"]; st.rerun()
                 else: st.error("Błąd logowania")
     st.stop()
 
@@ -237,42 +212,22 @@ with st.sidebar:
     st.write(f"Zalogowany: **{st.session_state.user}**")
     if st.button("🚪 Wyloguj"): st.session_state.user = None; st.rerun()
     st.divider()
-    
     if is_admin:
         with st.expander("👥 Użytkownicy"):
             with st.form("add_u_f", clear_on_submit=True):
                 nu, np, nr = st.text_input("Login"), st.text_input("Hasło"), st.selectbox("Rola", ["edycja","wgląd","admin"])
                 if st.form_submit_button("Dodaj"):
                     if nu: dane["uzytkownicy"][nu] = {"pass": np, "role": nr, "last_login": ""}; zapisz_dane(dane); st.rerun()
-            for usr, info in dane["uzytkownicy"].items():
-                c1, c2, c3 = st.columns([2,1.2,0.8]); c1.write(f"**{usr}**")
-                with c2.popover("Edytuj"):
-                    ep = st.text_input("Hasło", info["pass"], key=f"up_{usr}")
-                    er = st.selectbox("Rola", ["edycja","wgląd","admin"], ["edycja","wgląd","admin"].index(info["role"]), key=f"ur_{usr}")
-                    if st.button("💾 Zapisz", key=f"us_{usr}"): dane["uzytkownicy"][usr].update({"pass": ep, "role": er}); zapisz_dane(dane); st.rerun()
-                if usr != "admin":
-                    if c3.button("X", key=f"del_{usr}"): del dane["uzytkownicy"][usr]; zapisz_dane(dane); st.rerun()
 
     if can_edit:
         st.markdown('<div class="sidebar-header">➕ NOWY WPIS</div>', unsafe_allow_html=True)
         typ = st.selectbox("Rodzaj:", ["Produkcja", "Odbiór (Powrót)", "Dostawa (PZ)", "Dyspozycja"])
         with st.form("f_add"):
-            if typ=="Produkcja":
-                kl, tm, sz, au, kr, pi = st.text_input("Klient"), st.text_input("Termin"), st.text_area("Produkty"), st.selectbox("Auto", OPCJE_TRANSPORTU), st.selectbox("Kurs", [1,2,3,4,5]), st.checkbox("PILNE")
-                if st.form_submit_button("Zapisz"):
-                    if kl: dane["w_realizacji"].append({"klient":kl,"termin":tm,"szczegoly":sz,"auto":au,"kurs":kr,"pilne":pi,"status":"W produkcji","data_p":datetime.now().strftime("%d.%m %H:%M"),"autor":st.session_state.user}); zapisz_dane(dane); st.rerun()
-            elif typ=="Odbiór (Powrót)":
-                mj, tm, tw, au, kr = st.text_input("Skąd?"), st.text_input("Data"), st.text_area("Co?"), st.selectbox("Auto", OPCJE_TRANSPORTU), st.selectbox("Kurs", [1,2,3,4,5])
-                if st.form_submit_button("Zapisz"):
-                    if mj: dane["odbiory"].append({"miejsce":mj,"termin":tm,"towar":tw,"auto":au,"kurs":kr,"data_p":datetime.now().strftime("%d.%m %H:%M"),"autor":st.session_state.user}); zapisz_dane(dane); st.rerun()
-            elif typ=="Dostawa (PZ)":
-                ds, tm, tw = st.text_input("Dostawca"), st.text_input("Data"), st.text_area("Towar")
-                if st.form_submit_button("Zapisz"):
-                    if ds: dane["przyjecia"].append({"dostawca":ds,"termin":tm,"towar":tw,"data_p":datetime.now().strftime("%d.%m %H:%M"),"autor":st.session_state.user}); zapisz_dane(dane); st.rerun()
-            else:
-                ty, tm, op = st.text_input("Tytuł"), st.text_input("Termin"), st.text_area("Opis")
-                if st.form_submit_button("Zapisz"):
-                    if ty: dane["dyspozycje"].append({"tytul":ty,"termin":tm,"opis":op,"data_p":datetime.now().strftime("%d.%m %H:%M"),"autor":st.session_state.user}); zapisz_dane(dane); st.rerun()
+            kl, tm, sz, au, kr, pi = st.text_input("Nazwa/Klient"), st.text_input("Termin"), st.text_area("Szczegóły"), st.selectbox("Auto", OPCJE_TRANSPORTU), st.selectbox("Kurs", [1,2,3,4,5]), st.checkbox("PILNE")
+            if st.form_submit_button("Zapisz"):
+                key_map = {"Produkcja": "w_realizacji", "Odbiór (Powrót)": "odbiory", "Dostawa (PZ)": "przyjecia", "Dyspozycja": "dyspozycje"}
+                item = {"klient": kl, "miejsce": kl, "dostawca": kl, "tytul": kl, "termin": tm, "szczegoly": sz, "towar": sz, "opis": sz, "auto": au, "kurs": int(kr), "pilne": pi, "status": "W produkcji", "data_p": datetime.now().strftime("%d.%m %H:%M"), "autor": st.session_state.user}
+                dane[key_map[typ]].append(item); zapisz_dane(dane); st.rerun()
     
     st.divider()
     data_druk = st.text_input("Podaj datę (np. 31.03):", value=datetime.now().strftime("%d.%m"))
@@ -293,20 +248,35 @@ if not tryb_mobilny:
         with cols[i]:
             st.markdown(f"<div class='day-header'><div class='day-name'>{['Pon','Wt','Śr','Czw','Pt','Sob','Nd'][i]}</div><div class='day-date'>{d_str}</div></div>", unsafe_allow_html=True)
             
-            # --- NAPRAWIONA LOGIKA WYŚWIETLANIA (TYLKO AUTO + KLIENT) ---
-            z_dnia = [z for z in dane["w_realizacji"] if z.get('termin') == d_str]
-            o_dnia = [o for o in dane["odbiory"] if o.get('termin') == d_str]
+            # --- POPRAWIONE RYGORYSTYCZNE GRUPOWANIE ---
+            day_tasks_to_group = [x for x in (dane["w_realizacji"] + dane["odbiory"]) if x.get('termin') == d_str]
+            grupy_aut = {}
             
-            for z in z_dnia:
-                cl = "cal-entry-ready" if z.get('status') == 'Gotowe' else "cal-entry-out"
-                # Bezpieczne czyszczenie tooltipa (dymka)
-                szczeg_clean = str(z.get('szczegoly', '')).replace('"', "&quot;").replace("'", "&apos;").replace("\n", " ")
-                # Wyświetlamy: Auto | Klient
-                st.markdown(f"<div class='{cl}' title='{szczeg_clean}'>{z.get('auto')} | {z.get('klient')}</div>", unsafe_allow_html=True)
+            for item in day_tasks_to_group:
+                a_name = str(item.get('auto', 'Brak')).strip()
+                k_num = str(item.get('kurs', '1')).strip()
+                g_key = f"{a_name}_K{k_num}"
+                if g_key not in grupy_aut:
+                    grupy_aut[g_key] = {'auto': a_name, 'kurs': k_num, 'tasks': []}
+                grupy_aut[g_key]['tasks'].append(item)
             
-            for o in o_dnia:
-                towar_clean = str(o.get('towar', '')).replace('"', "&quot;").replace("'", "&apos;").replace("\n", " ")
-                st.markdown(f"<div class='cal-entry-return' title='{towar_clean}'>Odb: {o.get('miejsce')}</div>", unsafe_allow_html=True)
+            # Renderowanie grup
+            for g_id in sorted(grupy_aut.keys()):
+                g = grupy_aut[g_id]
+                all_done = all(t.get('status') == 'Gotowe' for t in g['tasks'])
+                cl = "cal-entry-ready" if all_done else ("cal-entry-return" if g['auto'] == "Odbiór osobisty" else "cal-entry-out")
+                
+                names_str = ", ".join([str(t.get('klient') or t.get('miejsce')) for t in g['tasks']])
+                display_label = f"{g['auto']}/K{g['kurs']}: {names_str}"
+                
+                # Tooltip
+                tt = f"{g['auto']} / KURS {g['kurs']}"
+                for t in g['tasks']: 
+                    desc = str(t.get('szczegoly') or t.get('towar')).replace("\n", " ")
+                    tt += f"&#10;• {t.get('klient') or t.get('miejsce')}: {desc}"
+                tooltip_html = tt.replace('"', "&quot;").replace("'", "&apos;")
+                
+                st.markdown(f"<div class='{cl}' title='{tooltip_html}'>{display_label}</div>", unsafe_allow_html=True)
                 
             for p in dane["przyjecia"]:
                 if p.get('termin') == d_str:
@@ -317,12 +287,10 @@ if not tryb_mobilny:
 else:
     for i in range(7):
         day = start + timedelta(days=i); d_str = day.strftime('%d.%m')
-        z_dnia = [z for z in dane["w_realizacji"] if z.get('termin') == d_str]
-        o_dnia = [o for o in dane["odbiory"] if o.get('termin') == d_str]
-        if z_dnia or o_dnia:
+        tasks = [z for z in (dane["w_realizacji"] + dane["odbiory"]) if z.get('termin') == d_str]
+        if tasks:
             with st.expander(f"📅 {['Pon','Wt','Śr','Czw','Pt','Sob','Nd'][i]} ({d_str})"):
-                for z in z_dnia: st.write(f"📦 **{z['klient']}** - {z['auto']} (K{z['kurs']})")
-                for o in o_dnia: st.write(f"🔄 **Odbiór: {o['miejsce']}**")
+                for t in tasks: st.write(f"📦 **{t.get('klient') or t.get('miejsce')}** - {t.get('auto')} (K{t.get('kurs')})")
 
 # --- 7. TABELE REALIZACJI ---
 st.markdown('<div class="section-header">Listy Realizacji</div>', unsafe_allow_html=True)
@@ -333,13 +301,6 @@ def renderuj_tabele_ujednolicona(lista_zrodlowa, klucz_nazwa, klucz_szczegoly, k
     if not lista_zrodlowa: 
         st.info("Brak aktywnych wpisów.")
         return
-    hc = st.columns([2.0, 1.2, 5.0, 1.2, 0.6]) if not tryb_mobilny else st.columns([3, 2])
-    if not tryb_mobilny:
-        hc[0].markdown('<div class="label-text">Podmiot / Tytuł</div>', unsafe_allow_html=True)
-        hc[1].markdown('<div class="label-text">Termin</div>', unsafe_allow_html=True)
-        hc[2].markdown(f'<div class="label-text">{"Szczegóły" if is_readonly else "Zarządzanie"}</div>', unsafe_allow_html=True)
-        hc[3].markdown(f'<div class="label-text">Akcja</div>', unsafe_allow_html=True)
-    
     last_date = None
     for i, item in enumerate(lista_zrodlowa):
         ma_termin = bool(str(item.get('termin','')).strip())
@@ -355,7 +316,6 @@ def renderuj_tabele_ujednolicona(lista_zrodlowa, klucz_nazwa, klucz_szczegoly, k
         status = item.get('status','W toku')
         badge = '<span class="badge-status-ready">✅ GOTOWE</span>' if status=='Gotowe' else '<span class="badge-status-prod">⏳ W TOKU</span>'
         if klucz_id == "odb": badge = '<span class="badge-status-return">🔄 ODBIÓR</span>'
-        
         szczeg_safe = str(item.get(klucz_szczegoly, "Brak opisu")).replace('"', "&quot;").replace("'", "&apos;").replace("\n", " ")
         u_id = f"{klucz_id}_{i}_{item.get('data_p','')}".replace(':','').replace(' ','_').replace('.','_')
 
@@ -371,12 +331,9 @@ def renderuj_tabele_ujednolicona(lista_zrodlowa, klucz_nazwa, klucz_szczegoly, k
                     if klucz_id == "prod": st.download_button("🖨️ Karta A4", generuj_html_do_druku(item), f"Karta_{u_id}.html", "text/html", key=f"dl_{u_id}")
                     new_t = st.text_input("Termin", item.get('termin'), key=f"t_{u_id}")
                     new_s = st.text_area("Szczegóły", item.get(klucz_szczegoly), key=f"s_{u_id}")
-                    if klucz_id in ["prod", "odb"]:
-                        new_au = st.selectbox("Auto", OPCJE_TRANSPORTU, OPCJE_TRANSPORTU.index(item.get('auto','Brak')), key=f"au_{u_id}")
-                        new_kr = st.selectbox("Kurs", [1,2,3,4,5], int(item.get('kurs',1))-1, key=f"kr_{u_id}")
-                        if st.button("Zapisz", key=f"sv_{u_id}"): item.update({"termin":new_t, klucz_szczegoly:new_s, "auto":new_au, "kurs":new_kr}); zapisz_dane(dane); st.rerun()
-                    else:
-                        if st.button("Zapisz", key=f"sv_{u_id}"): item.update({"termin":new_t, klucz_szczegoly:new_s}); zapisz_dane(dane); st.rerun()
+                    new_au = st.selectbox("Auto", OPCJE_TRANSPORTU, OPCJE_TRANSPORTU.index(item.get('auto','Brak')), key=f"au_{u_id}")
+                    new_kr = st.selectbox("Kurs", [1,2,3,4,5], int(item.get('kurs',1))-1, key=f"kr_{u_id}")
+                    if st.button("Zapisz", key=f"sv_{u_id}"): item.update({"termin":new_t, klucz_szczegoly:new_s, "auto":new_au, "kurs":int(new_kr)}); zapisz_dane(dane); st.rerun()
             if not is_readonly:
                 if status != "Gotowe":
                     if c[3].button("ZROBIONE" if klucz_id != "pz" else "OK", key=f"ok_{u_id}"): item['status'] = "Gotowe"; zapisz_dane(dane); st.rerun()
@@ -389,8 +346,6 @@ def renderuj_tabele_ujednolicona(lista_zrodlowa, klucz_nazwa, klucz_szczegoly, k
             c1, c2 = st.columns([3.5, 1.5])
             c1.markdown(f"**{item.get(klucz_nazwa)}**<br>{badge}", unsafe_allow_html=True)
             with c2.popover("Akcje"):
-                st.write(f"Termin: {item.get('termin')}")
-                st.write(f"Treść: {item.get(klucz_szczegoly)}")
                 if not is_readonly:
                     if status != "Gotowe" and st.button("ZROBIONE", key=f"mok_{u_id}"): item['status']="Gotowe"; zapisz_dane(dane); st.rerun()
                     if status == "Gotowe" and st.button("WYŚLIJ", key=f"msnd_{u_id}"):
