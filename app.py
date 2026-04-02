@@ -55,6 +55,9 @@ button:has(div p:contains("Przywróć")), button:contains("Przywróć") {
 .main .block-container { padding-top: 2rem; }
 .section-header { background-color: #f8f9fa; padding: 12px 15px; border-radius: 6px; margin-bottom: 12px; margin-top: 25px; font-weight: 700; color: #212529; text-transform: uppercase; border-left: 5px solid #2b3035; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
 
+/* SEPARATOR DNI W TABELACH */
+.table-group-header { background-color: #e9ecef; color: #212529; padding: 6px 12px; font-weight: 700; font-size: 12px; border-radius: 4px; margin: 15px 0 8px 0; border-left: 4px solid #007bff; }
+
 /* KALENDARZ */
 [data-testid="stHorizontalBlock"]:has(> div:nth-child(7)):not(:has(> div:nth-child(8))) { gap: 0px !important; }
 [data-testid="stHorizontalBlock"]:has(> div:nth-child(7)):not(:has(> div:nth-child(8))) > div {
@@ -72,7 +75,6 @@ button:has(div p:contains("Przywróć")), button:contains("Przywróć") {
 .cal-entry-task { background: #fff4e6; color: #d9480f; border-left: 3px solid #d9480f; }
 
 /* TABELE REALIZACJI */
-.table-group-header { background-color: #e9ecef; color: #212529; padding: 6px 12px; font-weight: 700; font-size: 12px; border-radius: 4px; margin: 15px 0 8px 0; border-left: 4px solid #007bff; }
 .badge-status-prod { background-color: #ffc107; color: #212529; padding: 2px 5px; border-radius: 4px; font-size: 9px; font-weight: bold; margin-left: 5px; display: inline-block;}
 .badge-status-ready { background-color: #28a745; color: white; padding: 2px 5px; border-radius: 4px; font-size: 9px; font-weight: bold; margin-left: 5px; display: inline-block;}
 .badge-status-return { background-color: #7b1fa2; color: white; padding: 2px 5px; border-radius: 4px; font-size: 9px; font-weight: bold; margin-left: 5px; display: inline-block;}
@@ -81,10 +83,12 @@ button:has(div p:contains("Przywróć")), button:contains("Przywróć") {
 
 /* Tooltip dla nazwy klienta */
 .client-hover { cursor: help; border-bottom: 1px dotted #999; }
+
+div[data-testid="stHorizontalBlock"] { align-items: flex-start !important; }
 </style>
 """, unsafe_allow_html=True)
 
-# --- 2. LOGIKA BAZY DANYCH ---
+# --- 2. LOGIKA BAZY DANYCH (GOOGLE SHEETS) ---
 GSHEET_NAME = "GROPAK_ERP_DB"
 OPCJE_TRANSPORTU = ["Brak", "Auto 1", "Auto 2", "Transport zewnętrzny", "Odbiór osobisty", "Kurier"]
 
@@ -111,7 +115,9 @@ def posortuj_dane(dane):
             termin = str(item.get('termin', '')).strip()
             if not termin: return (2, 9999, 99, 99, 99, 99, 99, pilne)
             parts = termin.split('.')
-            return (0, 2026, int(parts[1]), int(parts[0]), t_score, k_score, status_score, pilne)
+            d, m = int(parts[0]), int(parts[1])
+            y = 2026
+            return (0, y, m, d, t_score, k_score, status_score, pilne)
         except: return (1, 9999, 99, 99, 99, 99, 99, pilne)
     for k in ["w_realizacji", "przyjecia", "dyspozycje", "odbiory"]:
         if k in dane: dane[k].sort(key=sort_key)
@@ -128,7 +134,9 @@ def obsluz_zalegle_odbiory(dane):
                 if termin_str:
                     try:
                         parts = termin_str.split('.')
-                        data_item = datetime(2026, int(parts[1]), int(parts[0]))
+                        d, m = int(parts[0]), int(parts[1])
+                        y = 2026
+                        data_item = datetime(y, m, d)
                         if data_item.date() < dzis.date():
                             item["termin"] = dzis_str
                             zmiana = True
@@ -136,7 +144,11 @@ def obsluz_zalegle_odbiory(dane):
     return dane, zmiana
 
 def wczytaj_dane():
-    default_dane = {"w_realizacji": [], "zrealizowane": [], "przyjecia": [], "przyjecia_historia": [], "dyspozycje": [], "dyspozycje_historia": [], "odbiory": [], "odbiory_historia": [], "tablica": [], "uzytkownicy": {"admin": {"pass": "gropak2026", "role": "admin", "last_login": ""}}}
+    default_dane = {
+        "w_realizacji": [], "zrealizowane": [], "przyjecia": [], "przyjecia_historia": [], 
+        "dyspozycje": [], "dyspozycje_historia": [], "odbiory": [], "odbiory_historia": [],
+        "tablica": [], "uzytkownicy": {"admin": {"pass": "gropak2026", "role": "admin", "last_login": ""}}
+    }
     client = get_gsheet_client()
     if not client: return default_dane
     try:
@@ -158,7 +170,8 @@ def zapisz_dane(dane_do_zapisu):
     if not client: return
     try:
         dane_do_zapisu = posortuj_dane(dane_do_zapisu)
-        sh = client.open(GSHEET_NAME); ws = sh.get_worksheet(0)
+        sh = client.open(GSHEET_NAME)
+        ws = sh.get_worksheet(0)
         ws.update_acell('A1', json.dumps(dane_do_zapisu))
     except Exception as e:
         st.error(f"Błąd zapisu: {e}")
@@ -224,6 +237,7 @@ with st.sidebar:
     st.write(f"Zalogowany: **{st.session_state.user}**")
     if st.button("🚪 Wyloguj"): st.session_state.user = None; st.rerun()
     st.divider()
+    
     if is_admin:
         with st.expander("👥 Użytkownicy"):
             with st.form("add_u_f", clear_on_submit=True):
@@ -279,18 +293,20 @@ if not tryb_mobilny:
         with cols[i]:
             st.markdown(f"<div class='day-header'><div class='day-name'>{['Pon','Wt','Śr','Czw','Pt','Sob','Nd'][i]}</div><div class='day-date'>{d_str}</div></div>", unsafe_allow_html=True)
             
-            # POPRAWIONA LOGIKA WYŚWIETLANIA W KALENDARZU (POKAZUJE KLIENTA)
+            # --- NAPRAWIONA LOGIKA WYŚWIETLANIA (TYLKO AUTO + KLIENT) ---
             z_dnia = [z for z in dane["w_realizacji"] if z.get('termin') == d_str]
             o_dnia = [o for o in dane["odbiory"] if o.get('termin') == d_str]
             
             for z in z_dnia:
                 cl = "cal-entry-ready" if z.get('status') == 'Gotowe' else "cal-entry-out"
-                szczeg_safe = str(z.get('szczegoly', '')).replace('"', "&quot;").replace("'", "&apos;")
-                st.markdown(f"<div class='{cl}' title='{szczeg_safe}'>{z.get('klient')} ({z.get('auto')})</div>", unsafe_allow_html=True)
+                # Bezpieczne czyszczenie tooltipa (dymka)
+                szczeg_clean = str(z.get('szczegoly', '')).replace('"', "&quot;").replace("'", "&apos;").replace("\n", " ")
+                # Wyświetlamy: Auto | Klient
+                st.markdown(f"<div class='{cl}' title='{szczeg_clean}'>{z.get('auto')} | {z.get('klient')}</div>", unsafe_allow_html=True)
             
             for o in o_dnia:
-                towar_safe = str(o.get('towar', '')).replace('"', "&quot;").replace("'", "&apos;")
-                st.markdown(f"<div class='cal-entry-return' title='{towar_safe}'>Odb: {o.get('miejsce')}</div>", unsafe_allow_html=True)
+                towar_clean = str(o.get('towar', '')).replace('"', "&quot;").replace("'", "&apos;").replace("\n", " ")
+                st.markdown(f"<div class='cal-entry-return' title='{towar_clean}'>Odb: {o.get('miejsce')}</div>", unsafe_allow_html=True)
                 
             for p in dane["przyjecia"]:
                 if p.get('termin') == d_str:
