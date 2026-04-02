@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 import gspread
 from google.oauth2 import service_account
 
-# --- 1. KONFIGURACJA I STYLIZACJA ---
+# --- 1. KONFIGURACJA I STYLIZACJA (1:1 TWOJE STYLE) ---
 st.set_page_config(page_title="GROPAK ERP", layout="wide")
 
 st.markdown("""
@@ -42,17 +42,19 @@ button:has(div p:contains("Przywróć")), button:contains("Przywróć") {
 
 /* PASEK POWIADOMIEŃ */
 .notification-container {
-    background-color: #fff3cd; border: 2px solid #ffeeba; border-left: 10px solid #ffc107;
-    padding: 15px; border-radius: 8px; margin-bottom: 25px;
+    background-color: #fff3cd;
+    border: 2px solid #ffeeba;
+    border-left: 10px solid #ffc107;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 25px;
 }
 .notif-title { font-weight: 900; color: #856404; font-size: 16px; margin-bottom: 8px; }
 .notif-item { font-size: 13px; color: #856404; padding: 2px 0; border-bottom: 1px dashed #ffeeba; }
 
 .main .block-container { padding-top: 2rem; }
 .section-header { background-color: #f8f9fa; padding: 12px 15px; border-radius: 6px; margin-bottom: 12px; margin-top: 25px; font-weight: 700; color: #212529; text-transform: uppercase; border-left: 5px solid #2b3035; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
-
-/* SEPARATOR DNI W TABELACH */
-.table-group-header { background-color: #e9ecef; color: #212529; padding: 6px 12px; font-weight: 700; font-size: 12px; border-radius: 4px; margin: 15px 0 8px 0; border-left: 4px solid #007bff; }
+.sidebar-header { background: linear-gradient(90deg, #1e7e34, #28a745); color: white; padding: 12px; border-radius: 6px; text-align: center; font-weight: 700; font-size: 14px; margin-bottom: 15px; letter-spacing: 1px; }
 
 /* KALENDARZ */
 [data-testid="stHorizontalBlock"]:has(> div:nth-child(7)):not(:has(> div:nth-child(8))) { gap: 0px !important; }
@@ -70,8 +72,15 @@ button:has(div p:contains("Przywróć")), button:contains("Przywróć") {
 .cal-entry-in { background: #f3f9f1; color: #28a745; border-left: 3px solid #28a745; }
 .cal-entry-task { background: #fff4e6; color: #d9480f; border-left: 3px solid #d9480f; }
 
+/* TABELE REALIZACJI */
+.table-group-header { background-color: #e9ecef; color: #212529; padding: 6px 12px; font-weight: 700; font-size: 12px; border-radius: 4px; margin: 15px 0 8px 0; border-left: 4px solid #007bff; }
+.badge-status-prod { background-color: #ffc107; color: #212529; padding: 2px 5px; border-radius: 4px; font-size: 9px; font-weight: bold; margin-left: 5px; display: inline-block;}
+.badge-status-ready { background-color: #28a745; color: white; padding: 2px 5px; border-radius: 4px; font-size: 9px; font-weight: bold; margin-left: 5px; display: inline-block;}
+.badge-status-return { background-color: #7b1fa2; color: white; padding: 2px 5px; border-radius: 4px; font-size: 9px; font-weight: bold; margin-left: 5px; display: inline-block;}
 .label-text { font-size: 11px; color: #6c757d; font-weight: 700; text-transform: uppercase; border-bottom: 1px solid #dee2e6; padding-bottom: 4px;}
 .readonly-text { font-size: 13px; white-space: pre-wrap; color: #495057; line-height: 1.4; padding: 5px; background: #fdfdfd; border-radius: 4px; border: 1px solid #eee; }
+
+/* Tooltip */
 .client-hover { cursor: help; border-bottom: 1px dotted #999; }
 
 div[data-testid="stHorizontalBlock"] { align-items: flex-start !important; }
@@ -87,10 +96,7 @@ def get_gsheet_client():
     try:
         creds_dict = st.secrets["gcp_service_account"]
         credentials = service_account.Credentials.from_service_account_info(creds_dict)
-        scoped_credentials = credentials.with_scopes([
-            "https://www.googleapis.com/auth/spreadsheets",
-            "https://www.googleapis.com/auth/drive"
-        ])
+        scoped_credentials = credentials.with_scopes(["https://www.googleapis.com/auth/spreadsheets","https://www.googleapis.com/auth/drive"])
         return gspread.authorize(scoped_credentials)
     except: return None
 
@@ -155,7 +161,7 @@ def zapisz_dane(dane_do_zapisu):
 
 dane = wczytaj_dane()
 
-# --- 3. FUNKCJE POMOCNICZE ---
+# --- 3. FUNKCJE POMOCNICZE (DRUKOWANIE) ---
 def generuj_html_do_druku(z):
     auto_val = z.get('auto', 'Brak'); k_val = z.get('kurs', 1); transport_str = f"{auto_val} / Kurs nr {k_val}" if auto_val in ["Auto 1", "Auto 2"] else auto_val
     return f"""<!DOCTYPE html><html lang="pl"><head><meta charset="UTF-8"><style>body{{font-family:sans-serif;padding:30px;}} .card{{border:5px solid black;padding:30px;}} h1{{text-align:center;border-bottom:3px solid black;}} .row{{display:flex;justify-content:space-between;margin-top:20px;font-size:20px;}} .box{{border:1px solid #666;padding:15px;margin-top:20px;min-height:300px;font-size:20px;white-space:pre-wrap;line-height:1.4;}}</style></head><body onload="window.print()"><div class="card"><h1>Karta Zlecenia: {z.get('klient')}</h1><div class="row"><div><b>Termin:</b> {z.get('termin')}</div><div><b>Transport:</b> {transport_str}</div></div><p><b>PRODUKTY / SZCZEGÓŁY:</b></p><div class="box">{z.get('szczegoly')}</div><div style="margin-top:50px;text-align:right;">Podpis: __________________________</div></div></body></html>"""
@@ -204,7 +210,7 @@ is_readonly = st.session_state.role == "wgląd"
 can_edit = st.session_state.role in ["admin", "edycja"]
 is_admin = st.session_state.role == "admin"
 
-# --- 5. PANEL BOCZNY ---
+# --- 5. PANEL BOCZNY (TWOJA KONFIGURACJA) ---
 with st.sidebar:
     st.markdown("### PANEL STEROWANIA")
     tryb_mobilny = st.toggle("📱 Tryb Mobilny", value=False)
@@ -228,9 +234,8 @@ with st.sidebar:
                 key_map = {"Produkcja": "w_realizacji", "Odbiór (Powrót)": "odbiory", "Dostawa (PZ)": "przyjecia", "Dyspozycja": "dyspozycje"}
                 item = {"klient": kl, "miejsce": kl, "dostawca": kl, "tytul": kl, "termin": tm, "szczegoly": sz, "towar": sz, "opis": sz, "auto": au, "kurs": int(kr), "pilne": pi, "status": "W produkcji", "data_p": datetime.now().strftime("%d.%m %H:%M"), "autor": st.session_state.user}
                 dane[key_map[typ]].append(item); zapisz_dane(dane); st.rerun()
-    
     st.divider()
-    data_druk = st.text_input("Podaj datę (np. 31.03):", value=datetime.now().strftime("%d.%m"))
+    data_druk = st.text_input("Podaj datę do druku (np. 31.03):", value=datetime.now().strftime("%d.%m"))
     st.download_button("📥 Pobierz Rozpiskę Dnia", data=generuj_rozpiske_zbiorcza(data_druk, dane["w_realizacji"], dane["odbiory"]), file_name=f"Plan_{data_druk}.html", mime="text/html")
 
 # --- 6. TERMINARZ TYGODNIOWY ---
@@ -248,11 +253,11 @@ if not tryb_mobilny:
         with cols[i]:
             st.markdown(f"<div class='day-header'><div class='day-name'>{['Pon','Wt','Śr','Czw','Pt','Sob','Nd'][i]}</div><div class='day-date'>{d_str}</div></div>", unsafe_allow_html=True)
             
-            # --- POPRAWIONE RYGORYSTYCZNE GRUPOWANIE ---
-            day_tasks_to_group = [x for x in (dane["w_realizacji"] + dane["odbiory"]) if x.get('termin') == d_str]
+            # --- NAPRAWIONE RYGORYSTYCZNE GRUPOWANIE ---
+            day_tasks = [x for x in (dane["w_realizacji"] + dane["odbiory"]) if x.get('termin') == d_str]
             grupy_aut = {}
             
-            for item in day_tasks_to_group:
+            for item in day_tasks:
                 a_name = str(item.get('auto', 'Brak')).strip()
                 k_num = str(item.get('kurs', '1')).strip()
                 g_key = f"{a_name}_K{k_num}"
@@ -260,30 +265,27 @@ if not tryb_mobilny:
                     grupy_aut[g_key] = {'auto': a_name, 'kurs': k_num, 'tasks': []}
                 grupy_aut[g_key]['tasks'].append(item)
             
-            # Renderowanie grup
             for g_id in sorted(grupy_aut.keys()):
                 g = grupy_aut[g_id]
                 all_done = all(t.get('status') == 'Gotowe' for t in g['tasks'])
                 cl = "cal-entry-ready" if all_done else ("cal-entry-return" if g['auto'] == "Odbiór osobisty" else "cal-entry-out")
-                
                 names_str = ", ".join([str(t.get('klient') or t.get('miejsce')) for t in g['tasks']])
                 display_label = f"{g['auto']}/K{g['kurs']}: {names_str}"
                 
-                # Tooltip
+                # Tooltip z czystym tekstem (usuwamy entery)
                 tt = f"{g['auto']} / KURS {g['kurs']}"
                 for t in g['tasks']: 
-                    desc = str(t.get('szczegoly') or t.get('towar')).replace("\n", " ")
+                    desc = str(t.get('szczegoly') or t.get('towar')).replace("\n", " ").replace("\r", "")
                     tt += f"&#10;• {t.get('klient') or t.get('miejsce')}: {desc}"
                 tooltip_html = tt.replace('"', "&quot;").replace("'", "&apos;")
-                
                 st.markdown(f"<div class='{cl}' title='{tooltip_html}'>{display_label}</div>", unsafe_allow_html=True)
                 
             for p in dane["przyjecia"]:
                 if p.get('termin') == d_str:
-                    st.markdown(f"<div class='cal-entry-in' title='{p.get('towar')}'>P: {p.get('dostawca')}</div>", unsafe_allow_html=True)
+                    st.markdown(f"<div class='cal-entry-in' title='{str(p.get('towar')).replace('\\n',' ')}'>P: {p.get('dostawca')}</div>", unsafe_allow_html=True)
             for d in dane["dyspozycje"]:
                 if d.get('termin') == d_str:
-                    st.markdown(f"<div class='cal-entry-task' title='{d.get('opis')}'>D: {d.get('tytul')}</div>", unsafe_allow_html=True)
+                    st.markdown(f"<div class='cal-entry-task' title='{str(d.get('opis')).replace('\\n',' ')}'>D: {d.get('tytul')}</div>", unsafe_allow_html=True)
 else:
     for i in range(7):
         day = start + timedelta(days=i); d_str = day.strftime('%d.%m')
@@ -292,7 +294,7 @@ else:
             with st.expander(f"📅 {['Pon','Wt','Śr','Czw','Pt','Sob','Nd'][i]} ({d_str})"):
                 for t in tasks: st.write(f"📦 **{t.get('klient') or t.get('miejsce')}** - {t.get('auto')} (K{t.get('kurs')})")
 
-# --- 7. TABELE REALIZACJI ---
+# --- 7. TABELE REALIZACJI (BEZ ZMIAN W STYLU) ---
 st.markdown('<div class="section-header">Listy Realizacji</div>', unsafe_allow_html=True)
 search = st.text_input("🔍 Szukaj we wszystkich wpisach...", "").lower()
 tabs = st.tabs(["🏭 Produkcja", "🔄 Odbiory", "🚚 Przyjęcia PZ", "📋 Dyspozycje"])
@@ -316,13 +318,14 @@ def renderuj_tabele_ujednolicona(lista_zrodlowa, klucz_nazwa, klucz_szczegoly, k
         status = item.get('status','W toku')
         badge = '<span class="badge-status-ready">✅ GOTOWE</span>' if status=='Gotowe' else '<span class="badge-status-prod">⏳ W TOKU</span>'
         if klucz_id == "odb": badge = '<span class="badge-status-return">🔄 ODBIÓR</span>'
-        szczeg_safe = str(item.get(klucz_szczegoly, "Brak opisu")).replace('"', "&quot;").replace("'", "&apos;").replace("\n", " ")
+        
+        sz_safe = str(item.get(klucz_szczegoly, "Brak opisu")).replace('"', "&quot;").replace("'", "&apos;").replace("\n", " ")
         u_id = f"{klucz_id}_{i}_{item.get('data_p','')}".replace(':','').replace(' ','_').replace('.','_')
 
         st.markdown("<div style='padding:10px 0; border-bottom:1px solid #eee;'>", unsafe_allow_html=True)
         if not tryb_mobilny:
             c = st.columns([2.0, 1.2, 5.0, 1.2, 0.6])
-            c[0].markdown(f"<span class='client-hover' title='{szczeg_safe}'>**{item.get(klucz_nazwa)}**</span><br>{badge}", unsafe_allow_html=True)
+            c[0].markdown(f"<span class='client-hover' title='{sz_safe}'>**{item.get(klucz_nazwa)}**</span><br>{badge}", unsafe_allow_html=True)
             c[1].write(item.get('termin', '---'))
             if is_readonly:
                 c[2].markdown(f"<div class='readonly-text'>{item.get(klucz_szczegoly,'-')}</div>", unsafe_allow_html=True)
@@ -335,12 +338,10 @@ def renderuj_tabele_ujednolicona(lista_zrodlowa, klucz_nazwa, klucz_szczegoly, k
                     new_kr = st.selectbox("Kurs", [1,2,3,4,5], int(item.get('kurs',1))-1, key=f"kr_{u_id}")
                     if st.button("Zapisz", key=f"sv_{u_id}"): item.update({"termin":new_t, klucz_szczegoly:new_s, "auto":new_au, "kurs":int(new_kr)}); zapisz_dane(dane); st.rerun()
             if not is_readonly:
-                if status != "Gotowe":
-                    if c[3].button("ZROBIONE" if klucz_id != "pz" else "OK", key=f"ok_{u_id}"): item['status'] = "Gotowe"; zapisz_dane(dane); st.rerun()
-                else:
-                    if c[3].button("WYŚLIJ", key=f"send_{u_id}"):
-                        hist_key = {"prod":"zrealizowane", "odb":"odbiory_historia", "pz":"przyjecia_historia", "dysp":"dyspozycje_historia"}[klucz_id]
-                        dane[hist_key].append(lista_zrodlowa.pop(i)); zapisz_dane(dane); st.rerun()
+                if status != "Gotowe" and c[3].button("ZROBIONE" if klucz_id != "pz" else "OK", key=f"ok_{u_id}"): item['status'] = "Gotowe"; zapisz_dane(dane); st.rerun()
+                elif status == "Gotowe" and c[3].button("WYŚLIJ", key=f"send_{u_id}"):
+                    h_map = {"prod":"zrealizowane", "odb":"odbiory_historia", "pz":"przyjecia_historia", "dysp":"dyspozycje_historia"}
+                    dane[h_map.get(klucz_id)].append(lista_zrodlowa.pop(i)); zapisz_dane(dane); st.rerun()
                 if c[4].button("X", key=f"del_{u_id}"): lista_zrodlowa.pop(i); zapisz_dane(dane); st.rerun()
         else:
             c1, c2 = st.columns([3.5, 1.5])
@@ -349,8 +350,8 @@ def renderuj_tabele_ujednolicona(lista_zrodlowa, klucz_nazwa, klucz_szczegoly, k
                 if not is_readonly:
                     if status != "Gotowe" and st.button("ZROBIONE", key=f"mok_{u_id}"): item['status']="Gotowe"; zapisz_dane(dane); st.rerun()
                     if status == "Gotowe" and st.button("WYŚLIJ", key=f"msnd_{u_id}"):
-                        hist_key = {"prod":"zrealizowane", "odb":"odbiory_historia", "pz":"przyjecia_historia", "dysp":"dyspozycje_historia"}[klucz_id]
-                        dane[hist_key].append(lista_zrodlowa.pop(i)); zapisz_dane(dane); st.rerun()
+                        h_map = {"prod":"zrealizowane", "odb":"odbiory_historia", "pz":"przyjecia_historia", "dysp":"dyspozycje_historia"}
+                        dane[h_map.get(klucz_id)].append(lista_zrodlowa.pop(i)); zapisz_dane(dane); st.rerun()
                     if st.button("USUŃ", key=f"mdel_{u_id}"): lista_zrodlowa.pop(i); zapisz_dane(dane); st.rerun()
         st.markdown("</div>", unsafe_allow_html=True)
 
