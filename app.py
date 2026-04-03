@@ -54,7 +54,6 @@ button:has(div p:contains("Przywróć")), button:contains("Przywróć") {
 
 .main .block-container { padding-top: 2rem; }
 .section-header { background-color: #f8f9fa; padding: 12px 15px; border-radius: 6px; margin-bottom: 12px; margin-top: 25px; font-weight: 700; color: #212529; text-transform: uppercase; border-left: 5px solid #2b3035; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
-.sidebar-header { background: linear-gradient(90deg, #1e7e34, #28a745); color: white; padding: 12px; border-radius: 6px; text-align: center; font-weight: 700; font-size: 14px; margin-bottom: 15px; letter-spacing: 1px; }
 
 /* STYL ŻÓŁTEJ KARTKI (POST-IT) */
 .note-card { 
@@ -115,7 +114,10 @@ def get_gsheet_client():
     try:
         creds_dict = st.secrets["gcp_service_account"]
         credentials = service_account.Credentials.from_service_account_info(creds_dict)
-        scoped_credentials = credentials.with_scopes(["https://www.googleapis.com/auth/spreadsheets","https://www.googleapis.com/auth/drive"])
+        scoped_credentials = credentials.with_scopes([
+            "https://www.googleapis.com/auth/spreadsheets",
+            "https://www.googleapis.com/auth/drive"
+        ])
         return gspread.authorize(scoped_credentials)
     except: return None
 
@@ -136,18 +138,25 @@ def posortuj_dane(dane):
         if k in dane: dane[k].sort(key=sort_key)
     return dane
 
-def obsluz_zalegle_odbiory(dane):
+# --- FUNKCJA AUTOMATYCZNEGO PRZESUWANIA ZALEGŁYCH ZADAŃ ---
+def auto_przesun_zadania(dane):
     dzis = datetime.now()
     dzis_str = dzis.strftime("%d.%m")
     zmiana = False
-    for kat in ["w_realizacji", "odbiory"]:
+    kategorie = ["w_realizacji", "przyjecia", "dyspozycje", "odbiory"]
+    
+    for kat in kategorie:
         for item in dane.get(kat, []):
-            if item.get("auto") == "Odbiór osobisty" and item.get("status") != "Gotowe":
+            # Przesuwamy tylko jeśli status nie jest "Gotowe"
+            if item.get("status") != "Gotowe":
                 termin_str = str(item.get("termin", "")).strip()
                 if termin_str:
                     try:
                         parts = termin_str.split('.')
-                        data_item = datetime(2026, int(parts[1]), int(parts[0]))
+                        d, m = int(parts[0]), int(parts[1])
+                        # Przyjmujemy rok 2026 zgodnie z logiką sortowania
+                        data_item = datetime(2026, m, d)
+                        # Jeśli data zadania jest mniejsza niż dzisiaj
                         if data_item.date() < dzis.date():
                             item["termin"] = dzis_str
                             zmiana = True
@@ -155,7 +164,11 @@ def obsluz_zalegle_odbiory(dane):
     return dane, zmiana
 
 def wczytaj_dane():
-    default_dane = {"w_realizacji": [], "zrealizowane": [], "przyjecia": [], "przyjecia_historia": [], "dyspozycje": [], "dyspozycje_historia": [], "odbiory": [], "odbiory_historia": [], "tablica": [], "uzytkownicy": {"admin": {"pass": "gropak2026", "role": "admin", "last_login": ""}}}
+    default_dane = {
+        "w_realizacji": [], "zrealizowane": [], "przyjecia": [], "przyjecia_historia": [], 
+        "dyspozycje": [], "dyspozycje_historia": [], "odbiory": [], "odbiory_historia": [], 
+        "tablica": [], "uzytkownicy": {"admin": {"pass": "gropak2026", "role": "admin", "last_login": ""}}
+    }
     client = get_gsheet_client()
     if not client: return default_dane
     try:
@@ -164,7 +177,8 @@ def wczytaj_dane():
             d = json.loads(val)
             for k, v in default_dane.items():
                 if k not in d: d[k] = v
-            d, czy_byla_zmiana = obsluz_zalegle_odbiory(d)
+            # Uruchomienie automatycznego przesuwania terminów przy każdym wczytaniu
+            d, czy_byla_zmiana = auto_przesun_zadania(d)
             if czy_byla_zmiana: zapisz_dane(d)
             return posortuj_dane(d)
     except: pass
