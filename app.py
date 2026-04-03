@@ -114,10 +114,7 @@ def get_gsheet_client():
     try:
         creds_dict = st.secrets["gcp_service_account"]
         credentials = service_account.Credentials.from_service_account_info(creds_dict)
-        scoped_credentials = credentials.with_scopes([
-            "https://www.googleapis.com/auth/spreadsheets",
-            "https://www.googleapis.com/auth/drive"
-        ])
+        scoped_credentials = credentials.with_scopes(["https://www.googleapis.com/auth/spreadsheets","https://www.googleapis.com/auth/drive"])
         return gspread.authorize(scoped_credentials)
     except: return None
 
@@ -147,28 +144,22 @@ def auto_przesun_zadania(dane):
     
     for kat in kategorie:
         for item in dane.get(kat, []):
-            # Przesuwamy tylko jeśli status nie jest "Gotowe"
-            if item.get("status") != "Gotowe":
-                termin_str = str(item.get("termin", "")).strip()
-                if termin_str:
-                    try:
-                        parts = termin_str.split('.')
-                        d, m = int(parts[0]), int(parts[1])
-                        # Przyjmujemy rok 2026 zgodnie z logiką sortowania
-                        data_item = datetime(2026, m, d)
-                        # Jeśli data zadania jest mniejsza niż dzisiaj
-                        if data_item.date() < dzis.date():
-                            item["termin"] = dzis_str
-                            zmiana = True
-                    except: pass
+            # POPRAWKA: Przesuwamy WSZYSTKO co zostało w listach aktywnych (nawet status 'Gotowe'), 
+            # jeśli nie zostało jeszcze wysłane do historii.
+            termin_str = str(item.get("termin", "")).strip()
+            if termin_str:
+                try:
+                    parts = termin_str.split('.')
+                    d, m = int(parts[0]), int(parts[1])
+                    data_item = datetime(2026, m, d)
+                    if data_item.date() < dzis.date():
+                        item["termin"] = dzis_str
+                        zmiana = True
+                except: pass
     return dane, zmiana
 
 def wczytaj_dane():
-    default_dane = {
-        "w_realizacji": [], "zrealizowane": [], "przyjecia": [], "przyjecia_historia": [], 
-        "dyspozycje": [], "dyspozycje_historia": [], "odbiory": [], "odbiory_historia": [], 
-        "tablica": [], "uzytkownicy": {"admin": {"pass": "gropak2026", "role": "admin", "last_login": ""}}
-    }
+    default_dane = {"w_realizacji": [], "zrealizowane": [], "przyjecia": [], "przyjecia_historia": [], "dyspozycje": [], "dyspozycje_historia": [], "odbiory": [], "odbiory_historia": [], "tablica": [], "uzytkownicy": {"admin": {"pass": "gropak2026", "role": "admin", "last_login": ""}}}
     client = get_gsheet_client()
     if not client: return default_dane
     try:
@@ -177,7 +168,7 @@ def wczytaj_dane():
             d = json.loads(val)
             for k, v in default_dane.items():
                 if k not in d: d[k] = v
-            # Uruchomienie automatycznego przesuwania terminów przy każdym wczytaniu
+            # Uruchomienie automatycznego przesuwania terminów (teraz również dla 'Gotowych')
             d, czy_byla_zmiana = auto_przesun_zadania(d)
             if czy_byla_zmiana: zapisz_dane(d)
             return posortuj_dane(d)
